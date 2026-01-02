@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FDEP Well Billing Calculator (ITN 2024019)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #f3f4f6;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        .pay-item-row:nth-child(even) {
+            background-color: #f9fafb;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    </style>
+</head>
+<body class="p-2 md:p-4">
+    <div class="max-w-7xl mx-auto bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
+        <div class="bg-slate-800 p-3 text-white flex justify-center items-center">
+            <h1 class="text-sm font-bold uppercase tracking-wider text-center">FDEP PRP Calculator</h1>
+        </div>
+        <div class="p-3">
+            <!-- Table Header for Inputs -->
+            <div class="grid grid-cols-7 gap-2 mb-1 px-1">
+                <label class="col-span-1 text-[10px] font-bold text-gray-500 uppercase text-center">Quantity</label>
+                <label class="col-span-1 text-[10px] font-bold text-gray-500 uppercase text-center">Rig Type</label>
+                <label class="col-span-1 text-[10px] font-bold text-gray-500 uppercase text-center">TYPE (SB/MW/DW)</label>
+                <label class="col-span-1 text-[10px] font-bold text-gray-500 uppercase text-center">Diameter</label>
+                <label class="col-span-1 text-[10px] font-bold text-gray-500 uppercase text-center">Depth (ft bls)</label>
+                <label class="col-span-1 text-[10px] font-bold text-gray-500 uppercase text-center">Surface Casing Depth</label>
+                <label class="col-span-1 text-[10px] font-bold text-gray-500 uppercase text-center">Split Spoons/Sonic Cores</label>
+            </div>
+            
+            <div id="inputRows" class="space-y-2 mb-4">
+                <!-- Row 0: Default MW -->
+                <div class="well-row grid grid-cols-7 gap-2 items-center" data-index="0">
+                    <input type="number" class="qty col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-blue-50 font-bold text-blue-800" value="0" min="0" oninput="toggleSC(this)">
+                    <select class="rig col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)">
+                        <option value="HSA">HSA</option>
+                        <option value="Sonic">Sonic</option>
+                        <option value="COMPARE">Compare</option>
+                    </select>
+                    <select class="type col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)">
+                        <option value="SB">SB (Boring)</option>
+                        <option value="MW" selected>MW (Shallow)</option>
+                        <option value="DW">DW (Deep)</option>
+                    </select>
+                    <select class="diam col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50">
+                        <option value="NA" disabled hidden>N/A</option>
+                        <option value="2">2-inch</option>
+                        <option value="4">4-inch</option>
+                    </select>
+                    <input type="number" class="td col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="ft">
+                    <input type="text" class="sc col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="Surface Casing Depth ft">
+                    <select class="ss col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50">
+                        <option value="NONE" selected>None</option>
+                        <option value="OVA">Contingent on highest OVA</option>
+                        <option value="2FT">Each 2 ft interval</option>
+                    </select>
+                </div>
+                <!-- Row 1: Default DW -->
+                <div class="well-row grid grid-cols-7 gap-2 items-center" data-index="1">
+                    <input type="number" class="qty col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-blue-50 font-bold text-blue-800" value="0" min="0" oninput="toggleSC(this)">
+                    <select class="rig col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)"><option value="HSA">HSA</option><option value="Sonic">Sonic</option><option value="COMPARE">Compare</option></select>
+                    <select class="type col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)"><option value="SB">SB</option><option value="MW">MW</option><option value="DW" selected>DW</option></select>
+                    <select class="diam col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50"><option value="NA" disabled hidden>N/A</option><option value="2">2-inch</option><option value="4">4-inch</option></select>
+                    <input type="number" class="td col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="ft">
+                    <input type="text" class="sc col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="Surface Casing Depth ft">
+                    <select class="ss col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50"><option value="NONE" selected>None</option><option value="OVA">Contingent on highest OVA</option><option value="2FT">Each 2 ft interval</option></select>
+                </div>
+                <!-- Row 2: Default SB -->
+                <div class="well-row grid grid-cols-7 gap-2 items-center" data-index="2">
+                    <input type="number" class="qty col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-blue-50 font-bold text-blue-800" value="0" min="0" oninput="toggleSC(this)">
+                    <select class="rig col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)"><option value="HSA">HSA</option><option value="Sonic">Sonic</option><option value="COMPARE">Compare</option></select>
+                    <select class="type col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)"><option value="SB" selected>SB</option><option value="MW">MW</option><option value="DW">DW</option></select>
+                    <select class="diam col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50"><option value="NA" disabled hidden>N/A</option><option value="2">2-inch</option><option value="4">4-inch</option></select>
+                    <input type="number" class="td col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="ft">
+                    <input type="text" class="sc col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="Surface Casing Depth ft">
+                    <select class="ss col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50"><option value="NONE" selected>None</option><option value="OVA">Contingent on highest OVA</option><option value="2FT">Each 2 ft interval</option></select>
+                </div>
+            </div>
+            <div class="flex justify-center gap-4 mb-4">
+                <button onclick="addRow()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-8 rounded text-xs transition duration-200 shadow-sm uppercase tracking-wider">
+                    Add more rows
+                </button>
+                <button onclick="calculate()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-8 rounded text-xs transition duration-200 shadow-sm uppercase tracking-wider">
+                    Process Pay Items
+                </button>
+                <button id="resetBtn" onclick="resetForm()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1.5 px-8 rounded text-xs transition duration-200 shadow-sm uppercase tracking-wider">
+                    Reset
+                </button>
+            </div>
+            <div id="results" class="hidden">
+                <div id="alerts" class="mb-4"></div>
+                <div id="resultsTables" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Tables injected here -->
+                </div>
+                <div id="singleResult" class="w-full">
+                    <!-- Standard table injected here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        function toggleSC(el) {
+            const rows = document.querySelectorAll('.well-row');
+            const triggeringRow = el.closest('.well-row');
+            const triggeringIndex = parseInt(triggeringRow.dataset.index);
+            const rigSelects = document.querySelectorAll('.rig');
+            // --- RIG TYPE SYNCHRONIZATION LOGIC ---
+            if (el.classList.contains('rig')) {
+                const newValue = el.value;
+                if (newValue === 'COMPARE') {
+                    // Rule: If Compare is selected anywhere, force it everywhere
+                    rigSelects.forEach(sel => sel.value = 'COMPARE');
+                } else if (triggeringIndex === 0) {
+                    // Rule: Only Row 1 can change the global state from Compare back to HSA/Sonic
+                    // Check if other rows are currently in Compare mode
+                    const otherRowsAreCompare = Array.from(rigSelects).slice(1).some(s => s.value === 'COMPARE');
+                    if (otherRowsAreCompare && (newValue === 'HSA' || newValue === 'Sonic')) {
+                        rigSelects.forEach(sel => sel.value = newValue);
+                    }
+                }
+            }
+            // --- UPDATE ENABLING/DISABLING FOR ALL ROWS ---
+            // We re-evaluate the state of every row because rig synchronization is global
+            const firstRowRig = rigSelects[0].value;
+            const isCompareMode = firstRowRig === 'COMPARE';
+            rows.forEach(currentRow => {
+                const idx = parseInt(currentRow.dataset.index);
+                const qtyVal = parseInt(currentRow.querySelector('.qty').value) || 0;
+                
+                const rigSelect = currentRow.querySelector('.rig');
+                const typeSelect = currentRow.querySelector('.type');
+                const diamSelect = currentRow.querySelector('.diam');
+                const tdInput = currentRow.querySelector('.td');
+                const scInput = currentRow.querySelector('.sc');
+                const ssSelect = currentRow.querySelector('.ss');
+                // Step 1: Default everything to enabled
+                [rigSelect, typeSelect, diamSelect, tdInput, scInput, ssSelect].forEach(item => {
+                    item.disabled = false;
+                    item.style.opacity = '1';
+                });
+                // Step 2: Global "Compare" lockout (Only applies to Rig Type column)
+                // Rule: If Compare is selected, only row 1's rig dropdown is changeable
+                if (isCompareMode && idx > 0) {
+                    rigSelect.disabled = true;
+                    rigSelect.style.opacity = '0.3';
+                }
+                // Step 3: Global "Quantity = 0" rule (Applies to ALL rows including Row 1)
+                if (qtyVal === 0) {
+                    [rigSelect, typeSelect, diamSelect, tdInput, scInput, ssSelect].forEach(item => {
+                        item.disabled = true;
+                        item.style.opacity = '0.3';
+                    });
+                } else {
+                    // Step 4: Well Type specific visibility (MW/DW/SB logic)
+                    const typeVal = typeSelect.value;
+                    
+                    if (typeVal === 'MW' || typeVal === 'SB') {
+                        scInput.disabled = true;
+                        scInput.type = 'text'; 
+                        scInput.value = 'N/A';
+                        scInput.style.opacity = '0.3';
+                    } else {
+                        scInput.disabled = false;
+                        scInput.type = 'number';
+                        if (scInput.value === 'N/A') scInput.value = '';
+                    }
+                    if (typeVal === 'SB') {
+                        diamSelect.disabled = true;
+                        diamSelect.style.opacity = '0.3';
+                        diamSelect.value = 'NA';
+                    } else {
+                        if (diamSelect.value === 'NA') diamSelect.value = '2';
+                    }
+                }
+            });
+        }
+        function addRow() {
+            const container = document.getElementById('inputRows');
+            const rows = container.querySelectorAll('.well-row');
+            const nextIndex = rows.length;
+            
+            const firstRowRig = document.querySelector('.rig').value;
+            const initialRigValue = (firstRowRig === 'COMPARE') ? 'COMPARE' : 'HSA';
+            const newRow = document.createElement('div');
+            newRow.className = 'well-row grid grid-cols-7 gap-2 items-center';
+            newRow.setAttribute('data-index', nextIndex);
+            
+            newRow.innerHTML = `
+                <input type="number" class="qty col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-blue-50 font-bold text-blue-800" value="0" min="0" oninput="toggleSC(this)">
+                <select class="rig col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)">
+                    <option value="HSA" ${initialRigValue === 'HSA' ? 'selected' : ''}>HSA</option>
+                    <option value="Sonic" ${initialRigValue === 'Sonic' ? 'selected' : ''}>Sonic</option>
+                    <option value="COMPARE" ${initialRigValue === 'COMPARE' ? 'selected' : ''}>Compare</option>
+                </select>
+                <select class="type col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)">
+                    <option value="SB">SB</option>
+                    <option value="MW">MW</option>
+                    <option value="DW" selected>DW</option>
+                </select>
+                <select class="diam col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50">
+                    <option value="NA" disabled hidden>N/A</option>
+                    <option value="2">2-inch</option>
+                    <option value="4">4-inch</option>
+                </select>
+                <input type="number" class="td col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="ft">
+                <input type="text" class="sc col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="Surface Casing Depth ft">
+                <select class="ss col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50">
+                    <option value="NONE" selected>None</option>
+                    <option value="OVA">Contingent on highest OVA</option>
+                    <option value="2FT">Each 2 ft interval</option>
+                </select>
+            `;
+            
+            container.appendChild(newRow);
+            toggleSC(newRow.querySelector('.qty'));
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.well-row').forEach(row => {
+                toggleSC(row.querySelector('.qty'));
+            });
+        });
+        function resetForm() {
+            const container = document.getElementById('inputRows');
+            const initialRowCount = 3;
+            const rows = container.querySelectorAll('.well-row');
+            for (let i = rows.length - 1; i >= initialRowCount; i--) {
+                rows[i].remove();
+            }
+            container.querySelectorAll('.well-row').forEach((row, idx) => {
+                row.querySelector('.qty').value = '0';
+                row.querySelector('.td').value = '';
+                const scInput = row.querySelector('.sc');
+                scInput.type = 'number';
+                scInput.value = '';
+                row.querySelector('.rig').value = 'HSA';
+                
+                const typeSelect = row.querySelector('.type');
+                if (idx === 0) typeSelect.value = 'MW';
+                else if (idx === 1) typeSelect.value = 'DW';
+                else if (idx === 2) typeSelect.value = 'SB';
+                row.querySelector('.diam').value = '2';
+                row.querySelector('.ss').value = 'NONE';
+            });
+            document.querySelectorAll('.well-row').forEach(row => {
+                toggleSC(row.querySelector('.qty'));
+            });
+            document.getElementById('results').classList.add('hidden');
+            document.getElementById('alerts').innerHTML = '';
+            document.getElementById('resultsTables').innerHTML = '';
+            document.getElementById('singleResult').innerHTML = '';
+        }
+        function getDepthCategory(depth) {
+            if (depth < 50) return 'A';
+            if (depth >= 50 && depth <= 100) return 'B';
+            return 'C';
+        }
+        function processRowMethod(qty, totalDepth, casingDepth, method, type, diam, ssOption, rowIndex, alertDiv) {
+            const results = [];
+            const wellInstDesc = `Well Installation – ${diam === '2' ? '2' : '4'} inch diameter (vertical)`;
+            if (type === 'SB') {
+                const cat = getDepthCategory(totalDepth);
+                let item, desc;
+                const suffix = cat === 'A' ? '< 50 foot total depth' : (cat === 'B' ? '50 to 100 foot total depth' : '> 100 foot total depth');
+                if (method === 'HSA') {
+                    item = cat === 'A' ? '4-5' : (cat === 'B' ? '4-6' : '4-7');
+                    desc = `HSA or MR Boring ≤ 6-inch diameter; ${suffix}`;
+                } else {
+                    item = cat === 'A' ? '4-14' : (cat === 'B' ? '4-15' : '4-16');
+                    desc = `Sonic Boring ≤ 6 inch diameter; ${suffix}`;
+                }
+                results.push({ code: item, desc: desc, units: totalDepth * qty, unitType: 'ft' });
+            } else if (method === 'HSA') {
+                if (type === 'DW') {
+                    const screenTop = totalDepth - 5;
+                    const separation = screenTop - casingDepth;
+                    if (separation < 3 && alertDiv) {
+                        alertDiv.innerHTML += `<div class="bg-red-50 border-l-2 border-red-400 p-2 text-red-700 text-[10px] mb-1">
+                            <strong>ERR (Row ${rowIndex+1}):</strong> HSA Separation ${separation.toFixed(1)}' < 3' min.
+                        </div>`;
+                    }
+                    const scCat = getDepthCategory(casingDepth);
+                    const scItem = scCat === 'A' ? '4-11' : '4-12';
+                    const scSuffix = scCat === 'A' ? '< 50 foot total depth' : '50 to 100 foot total depth';
+                    results.push({ code: scItem, desc: `HSA or MR Boring > 10 to 14 inch diameter; ${scSuffix}`, units: casingDepth * qty, unitType: 'ft' });
+                    const inCat = getDepthCategory(totalDepth);
+                    const inItem = inCat === 'A' ? '4-5' : (inCat === 'B' ? '4-6' : '4-7');
+                    const inSuffix = inCat === 'A' ? '< 50 foot total depth' : (inCat === 'B' ? '50 to 100 foot total depth' : '> 100 foot total depth');
+                    results.push({ code: inItem, desc: `HSA or MR Boring ≤ 6-inch diameter; ${inSuffix}`, units: totalDepth * qty, unitType: 'ft' });
+                    results.push({ code: diam === '2' ? '5-2.a' : '5-3.a', desc: wellInstDesc, units: totalDepth * qty, unitType: 'ft' });
+                    results.push({ code: '5-6', desc: 'Surface Casing – 6 inch diameter', units: casingDepth * qty, unitType: 'ft' });
+                } else {
+                    const cat = getDepthCategory(totalDepth);
+                    const item = cat === 'A' ? '4-8' : '4-9';
+                    const suffix = cat === 'A' ? '< 50 foot total depth' : (cat === 'B' ? '50 to 100 foot total depth' : '> 100 foot total depth');
+                    results.push({ code: item, desc: `HSA or MR Boring > 6 to 10 inch diameter; ${suffix}`, units: totalDepth * qty, unitType: 'ft' });
+                    results.push({ code: diam === '2' ? '5-2.a' : '5-3.a', desc: wellInstDesc, units: totalDepth * qty, unitType: 'ft' });
+                }
+            } else {
+                if (type === 'DW') {
+                    const scCat = getDepthCategory(casingDepth);
+                    const tdCat = getDepthCategory(totalDepth);
+                    if (scCat === tdCat) {
+                        const code = scCat === 'A' ? '4-17' : (scCat === 'B' ? '4-18' : '4-19');
+                        const suffix = scCat === 'A' ? '< 50 foot total depth' : (scCat === 'B' ? '50 to 100 foot total depth' : '> 100 foot total depth');
+                        results.push({ code: code, desc: `Sonic Boring > 6 inch to 10 inches diameter; ${suffix}`, units: (casingDepth + totalDepth) * qty, unitType: 'ft' });
+                    } else {
+                        const codeC = scCat === 'A' ? '4-17' : (scCat === 'B' ? '4-18' : '4-19');
+                        const suffixC = scCat === 'A' ? '< 50 foot total depth' : (scCat === 'B' ? '50 to 100 foot total depth' : '> 100 foot total depth');
+                        results.push({ code: codeC, desc: `Sonic Boring > 6 inch to 10 inches diameter; ${suffixC}`, units: casingDepth * qty, unitType: 'ft' });
+                        const codeW = tdCat === 'A' ? '4-17' : (tdCat === 'B' ? '4-18' : '4-19');
+                        const suffixW = tdCat === 'A' ? '< 50 foot total depth' : (tdCat === 'B' ? '50 to 100 foot total depth' : '> 100 foot total depth');
+                        results.push({ code: codeW, desc: `Sonic Boring > 6 inch to 10 inches diameter; ${suffixW}`, units: totalDepth * qty, unitType: 'ft' });
+                    }
+                    results.push({ code: diam === '2' ? '5-2.a' : '5-3.a', desc: wellInstDesc, units: totalDepth * qty, unitType: 'ft' });
+                } else {
+                    const cat = getDepthCategory(totalDepth);
+                    const code = cat === 'A' ? '4-17' : (cat === 'B' ? '4-18' : '4-19');
+                    const suffix = cat === 'A' ? '< 50 foot total depth' : (cat === 'B' ? '50 to 100 foot total depth' : '> 100 foot total depth');
+                    results.push({ code: code, desc: `Sonic Boring > 6 inch to 10 inches diameter; ${suffix}`, units: totalDepth * qty, unitType: 'ft' });
+                    results.push({ code: diam === '2' ? '5-2.a' : '5-3.a', desc: wellInstDesc, units: totalDepth * qty, unitType: 'ft' });
+                }
+            }
+            if (ssOption === 'OVA' || ssOption === '2FT') {
+                if (method === 'HSA') {
+                    const cat = getDepthCategory(totalDepth);
+                    let ssCode, ssDesc;
+                    if (cat === 'A') { ssCode = '4-1.a'; ssDesc = 'Split Spoon Sampling – 2 foot (during boring) < 50 feet'; }
+                    else if (cat === 'B') { ssCode = '4-1.b'; ssDesc = 'Split Spoon Sampling – 2 foot (during boring) 50 to 100 feet'; }
+                    else { ssCode = '4-1.c'; ssDesc = 'Split Spoon Sampling – 2 foot (during boring) > 100 feet'; }
+                    let ssUnits = (ssOption === 'OVA') ? (1 * qty) : (Math.round(totalDepth / 2) * qty);
+                    results.push({ code: ssCode, desc: ssDesc, units: ssUnits, unitType: 'Split Spoon(s)' });
+                } else {
+                    const ssCode = '4-1.d';
+                    const ssDesc = 'Sonic Core Sampling – 5 or 10 foot (during boring)';
+                    let ssUnits = (ssOption === 'OVA') ? (1 * qty) : (Math.ceil(totalDepth / 10) * qty);
+                    results.push({ code: ssCode, desc: ssDesc, units: ssUnits, unitType: 'Sonic Core(s)' });
+                }
+            }
+            return results;
+        }
+        function renderTable(container, title, itemsMap) {
+            const sortedItems = Object.values(itemsMap).sort((a, b) => {
+                const getParts = (c) => c.split(/[-.]/).map(p => isNaN(parseInt(p)) ? p : parseInt(p));
+                const aP = getParts(a.code); const bP = getParts(b.code);
+                for (let i = 0; i < Math.max(aP.length, bP.length); i++) {
+                    if (aP[i] === undefined) return -1; if (bP[i] === undefined) return 1;
+                    if (aP[i] !== bP[i]) return (typeof aP[i] === 'number' && typeof bP[i] === 'number') ? aP[i] - bP[i] : String(aP[i]).localeCompare(bP[i]);
+                }
+                return 0;
+            });
+            let html = `
+                <div class="border border-gray-200 rounded-lg overflow-hidden shadow-sm bg-white">
+                    <div class="bg-gray-50 border-b border-gray-200 px-4 py-2">
+                        <h2 class="text-xs font-black text-slate-700 uppercase tracking-widest">${title}</h2>
+                    </div>
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-3 py-2 text-[9px] font-bold text-gray-400 uppercase text-left">Item</th>
+                                <th class="px-3 py-2 text-[9px] font-bold text-gray-400 uppercase text-left">Description</th>
+                                <th class="px-3 py-2 text-[9px] font-bold text-gray-400 uppercase text-right">Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 text-[10px] text-gray-600">`;
+            
+            sortedItems.forEach(item => {
+                html += `
+                    <tr class="pay-item-row hover:bg-blue-50/30 transition-colors">
+                        <td class="px-3 py-1.5 font-mono font-bold text-blue-600">${item.code}</td>
+                        <td class="px-3 py-1.5 leading-tight">${item.desc}</td>
+                        <td class="px-3 py-1.5 text-right font-bold text-slate-800">${item.units.toFixed(0)} ${item.unitType}</td>
+                    </tr>`;
+            });
+            html += `</tbody></table></div>`;
+            container.innerHTML += html;
+        }
+        function calculate() {
+            const rows = document.querySelectorAll('.well-row');
+            const alertDiv = document.getElementById('alerts');
+            const resultsTables = document.getElementById('resultsTables');
+            const singleResult = document.getElementById('singleResult');
+            
+            const hsaMap = {};
+            const sonicMap = {};
+            let isCompareMode = false;
+            let hasValidInput = false;
+            alertDiv.innerHTML = '';
+            resultsTables.innerHTML = '';
+            singleResult.innerHTML = '';
+            const mobItem = { code: '3-5', desc: 'Drill Rig and Support Vehicles Mobilization (hollow stem auger, mud rotary or sonic)', units: 1, unitType: 'Unit' };
+            rows.forEach(row => {
+                const qty = parseInt(row.querySelector('.qty').value) || 0;
+                const totalDepth = parseFloat(row.querySelector('.td').value);
+                const casingInput = row.querySelector('.sc');
+                const casingDepth = (casingInput.disabled || casingInput.value === 'N/A') ? 0 : (parseFloat(casingInput.value) || 0);
+                const rig = row.querySelector('.rig').value;
+                const type = row.querySelector('.type').value;
+                const diam = row.querySelector('.diam').value;
+                const ssOption = row.querySelector('.ss').value;
+                const rowIndex = parseInt(row.dataset.index);
+                if (qty <= 0 || isNaN(totalDepth)) return;
+                hasValidInput = true;
+                if (rig === 'COMPARE') isCompareMode = true;
+                if (rig === 'HSA' || rig === 'COMPARE') {
+                    const items = processRowMethod(qty, totalDepth, casingDepth, 'HSA', type, diam, ssOption, rowIndex, alertDiv);
+                    items.forEach(it => {
+                        if (!hsaMap[it.code]) hsaMap[it.code] = { ...it };
+                        else hsaMap[it.code].units += it.units;
+                    });
+                }
+                if (rig === 'Sonic' || rig === 'COMPARE') {
+                    const items = processRowMethod(qty, totalDepth, casingDepth, 'Sonic', type, diam, ssOption, rowIndex, alertDiv);
+                    items.forEach(it => {
+                        if (!sonicMap[it.code]) sonicMap[it.code] = { ...it };
+                        else sonicMap[it.code].units += it.units;
+                    });
+                }
+            });
+            if (!hasValidInput) return;
+            document.getElementById('results').classList.remove('hidden');
+            if (isCompareMode) {
+                if (Object.keys(hsaMap).length > 0) {
+                    hsaMap['3-5'] = { ...mobItem };
+                    renderTable(resultsTables, "HSA RIG METHOD", hsaMap);
+                }
+                if (Object.keys(sonicMap).length > 0) {
+                    sonicMap['3-5'] = { ...mobItem };
+                    renderTable(resultsTables, "SONIC RIG METHOD", sonicMap);
+                }
+            } else {
+                const finalMap = (Object.keys(hsaMap).length > 0) ? hsaMap : sonicMap;
+                if (finalMap && Object.keys(finalMap).length > 0) {
+                    finalMap['3-5'] = { ...mobItem };
+                    renderTable(singleResult, "Pay Item Summary", finalMap);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
