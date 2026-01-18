@@ -1,448 +1,501 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FDEP Well Billing Calculator (ITN 2024019)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body {
-            background-color: #f3f4f6;
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-        }
-        .pay-item-row:nth-child(even) {
-            background-color: #f9fafb;
-        }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FDEP Well Billing Calculator (ITN 2024019)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      background-color: #f3f4f6;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    .pay-item-row:nth-child(even) { background-color: #f9fafb; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  </style>
 </head>
 <body class="p-2 md:p-4">
-    <div class="max-w-7xl mx-auto bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
-        <div class="bg-slate-800 p-3 text-white flex justify-center items-center">
-            <h1 class="text-sm font-bold uppercase tracking-wider text-center">FDEP PRP Calculator</h1>
-        </div>
-        <div class="p-3">
-            <!-- Table Header for Inputs -->
-            <div class="grid grid-cols-7 gap-2 mb-1 px-1">
-                <label class="col-span-1 text-[10px] font-bold text-gray-500 uppercase text-center">Quantity</label>
-                <label class="col-span-1 text-[10px] font-bold text-gray-500 uppercase text-center">Rig Type</label>
-                <label class="col-span-1 text-[10px] font-bold text-gray-500 uppercase text-center">TYPE (SB/MW/DW)</label>
-                <label class="col-span-1 text-[10px] font-bold text-gray-500 uppercase text-center">Diameter</label>
-                <label class="col-span-1 text-[10px] font-bold text-gray-500 uppercase text-center">Depth (ft bls)</label>
-                <label class="col-span-1 text-[10px] font-bold text-gray-500 uppercase text-center">Surface Casing Depth</label>
-                <label class="col-span-1 text-[10px] font-bold text-gray-500 uppercase text-center">Split Spoons/Sonic Cores</label>
-            </div>
-            
-            <div id="inputRows" class="space-y-2 mb-4">
-                <!-- Row 0: Default MW -->
-                <div class="well-row grid grid-cols-7 gap-2 items-center" data-index="0">
-                    <input type="number" class="qty col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-blue-50 font-bold text-blue-800" value="0" min="0" oninput="toggleSC(this)">
-                    <select class="rig col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)">
-                        <option value="HSA">HSA</option>
-                        <option value="Sonic">Sonic</option>
-                        <option value="COMPARE">Compare</option>
-                    </select>
-                    <select class="type col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)">
-                        <option value="SB">SB (Boring)</option>
-                        <option value="MW" selected>MW (Shallow)</option>
-                        <option value="DW">DW (Deep)</option>
-                    </select>
-                    <select class="diam col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50">
-                        <option value="NA" disabled hidden>N/A</option>
-                        <option value="2">2-inch</option>
-                        <option value="4">4-inch</option>
-                    </select>
-                    <input type="number" class="td col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="ft">
-                    <input type="text" class="sc col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="Surface Casing Depth ft">
-                    <select class="ss col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50">
-                        <option value="NONE" selected>None</option>
-                        <option value="OVA">Contingent on highest OVA</option>
-                        <option value="2FT">Each 2 ft interval</option>
-                    </select>
-                </div>
-                <!-- Row 1: Default DW -->
-                <div class="well-row grid grid-cols-7 gap-2 items-center" data-index="1">
-                    <input type="number" class="qty col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-blue-50 font-bold text-blue-800" value="0" min="0" oninput="toggleSC(this)">
-                    <select class="rig col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)"><option value="HSA">HSA</option><option value="Sonic">Sonic</option><option value="COMPARE">Compare</option></select>
-                    <select class="type col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)"><option value="SB">SB</option><option value="MW">MW</option><option value="DW" selected>DW</option></select>
-                    <select class="diam col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50"><option value="NA" disabled hidden>N/A</option><option value="2">2-inch</option><option value="4">4-inch</option></select>
-                    <input type="number" class="td col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="ft">
-                    <input type="text" class="sc col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="Surface Casing Depth ft">
-                    <select class="ss col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50"><option value="NONE" selected>None</option><option value="OVA">Contingent on highest OVA</option><option value="2FT">Each 2 ft interval</option></select>
-                </div>
-                <!-- Row 2: Default SB -->
-                <div class="well-row grid grid-cols-7 gap-2 items-center" data-index="2">
-                    <input type="number" class="qty col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-blue-50 font-bold text-blue-800" value="0" min="0" oninput="toggleSC(this)">
-                    <select class="rig col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)"><option value="HSA">HSA</option><option value="Sonic">Sonic</option><option value="COMPARE">Compare</option></select>
-                    <select class="type col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)"><option value="SB" selected>SB</option><option value="MW">MW</option><option value="DW">DW</option></select>
-                    <select class="diam col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50"><option value="NA" disabled hidden>N/A</option><option value="2">2-inch</option><option value="4">4-inch</option></select>
-                    <input type="number" class="td col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="ft">
-                    <input type="text" class="sc col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="Surface Casing Depth ft">
-                    <select class="ss col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50"><option value="NONE" selected>None</option><option value="OVA">Contingent on highest OVA</option><option value="2FT">Each 2 ft interval</option></select>
-                </div>
-            </div>
-            <div class="flex justify-center gap-4 mb-4">
-                <button onclick="addRow()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-8 rounded text-xs transition duration-200 shadow-sm uppercase tracking-wider">
-                    Add more rows
-                </button>
-                <button onclick="calculate()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-8 rounded text-xs transition duration-200 shadow-sm uppercase tracking-wider">
-                    Process Pay Items
-                </button>
-                <button id="resetBtn" onclick="resetForm()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1.5 px-8 rounded text-xs transition duration-200 shadow-sm uppercase tracking-wider">
-                    Reset
-                </button>
-            </div>
-            <div id="results" class="hidden">
-                <div id="alerts" class="mb-4"></div>
-                <div id="resultsTables" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Tables injected here -->
-                </div>
-                <div id="singleResult" class="w-full">
-                    <!-- Standard table injected here -->
-                </div>
-            </div>
-        </div>
+  <div class="max-w-7xl mx-auto bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
+    <div class="bg-slate-800 p-3 text-white flex justify-center items-center">
+      <h1 class="text-sm font-bold uppercase tracking-wider text-center">FDEP PRP Calculator</h1>
     </div>
-    <script>
-        function toggleSC(el) {
-            const rows = document.querySelectorAll('.well-row');
-            const triggeringRow = el.closest('.well-row');
-            const triggeringIndex = parseInt(triggeringRow.dataset.index);
-            const rigSelects = document.querySelectorAll('.rig');
-            // --- RIG TYPE SYNCHRONIZATION LOGIC ---
-            if (el.classList.contains('rig')) {
-                const newValue = el.value;
-                if (newValue === 'COMPARE') {
-                    // Rule: If Compare is selected anywhere, force it everywhere
-                    rigSelects.forEach(sel => sel.value = 'COMPARE');
-                } else if (triggeringIndex === 0) {
-                    // Rule: Only Row 1 can change the global state from Compare back to HSA/Sonic
-                    // Check if other rows are currently in Compare mode
-                    const otherRowsAreCompare = Array.from(rigSelects).slice(1).some(s => s.value === 'COMPARE');
-                    if (otherRowsAreCompare && (newValue === 'HSA' || newValue === 'Sonic')) {
-                        rigSelects.forEach(sel => sel.value = newValue);
-                    }
-                }
-            }
-            // --- UPDATE ENABLING/DISABLING FOR ALL ROWS ---
-            // We re-evaluate the state of every row because rig synchronization is global
-            const firstRowRig = rigSelects[0].value;
-            const isCompareMode = firstRowRig === 'COMPARE';
-            rows.forEach(currentRow => {
-                const idx = parseInt(currentRow.dataset.index);
-                const qtyVal = parseInt(currentRow.querySelector('.qty').value) || 0;
-                
-                const rigSelect = currentRow.querySelector('.rig');
-                const typeSelect = currentRow.querySelector('.type');
-                const diamSelect = currentRow.querySelector('.diam');
-                const tdInput = currentRow.querySelector('.td');
-                const scInput = currentRow.querySelector('.sc');
-                const ssSelect = currentRow.querySelector('.ss');
-                // Step 1: Default everything to enabled
-                [rigSelect, typeSelect, diamSelect, tdInput, scInput, ssSelect].forEach(item => {
-                    item.disabled = false;
-                    item.style.opacity = '1';
-                });
-                // Step 2: Global "Compare" lockout (Only applies to Rig Type column)
-                // Rule: If Compare is selected, only row 1's rig dropdown is changeable
-                if (isCompareMode && idx > 0) {
-                    rigSelect.disabled = true;
-                    rigSelect.style.opacity = '0.3';
-                }
-                // Step 3: Global "Quantity = 0" rule (Applies to ALL rows including Row 1)
-                if (qtyVal === 0) {
-                    [rigSelect, typeSelect, diamSelect, tdInput, scInput, ssSelect].forEach(item => {
-                        item.disabled = true;
-                        item.style.opacity = '0.3';
-                    });
-                } else {
-                    // Step 4: Well Type specific visibility (MW/DW/SB logic)
-                    const typeVal = typeSelect.value;
-                    
-                    if (typeVal === 'MW' || typeVal === 'SB') {
-                        scInput.disabled = true;
-                        scInput.type = 'text'; 
-                        scInput.value = 'N/A';
-                        scInput.style.opacity = '0.3';
-                    } else {
-                        scInput.disabled = false;
-                        scInput.type = 'number';
-                        if (scInput.value === 'N/A') scInput.value = '';
-                    }
-                    if (typeVal === 'SB') {
-                        diamSelect.disabled = true;
-                        diamSelect.style.opacity = '0.3';
-                        diamSelect.value = 'NA';
-                    } else {
-                        if (diamSelect.value === 'NA') diamSelect.value = '2';
-                    }
-                }
-            });
+    <div class="p-3">
+      <!-- ATC Selector -->
+      <div class="mb-3 p-2 bg-gray-50 border border-gray-200 rounded">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 items-end">
+          <div class="md:col-span-2">
+            <label class="block text-[10px] font-bold text-gray-500 uppercase mb-1">Select ATC (CID - Name)</label>
+            <select id="atcSelect" class="w-full p-2 text-xs border border-gray-300 rounded outline-none bg-white">
+              <option value="">Loading ATCs…</option>
+            </select>
+            <div id="atcHint" class="mt-1 text-[10px] text-gray-500 italic"></div>
+          </div>
+          <div class="md:col-span-1">
+            <div class="text-[10px] text-gray-500 uppercase font-bold mb-1">  </div>
+            <div class="text-[10px] text-gray-600 leading-tight">
+              
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Table Header for Inputs -->
+      <div class="grid grid-cols-6 gap-2 mb-1 px-1">
+        <label class="col-span-1 text-[10px] font-bold text-gray-500 uppercase text-center">Quantity</label>
+        <label class="col-span-1 text-[10px] font-bold text-gray-500 uppercase text-center">Rig Type</label>
+        <label class="col-span-1 text-[10px] font-bold text-gray-500 uppercase text-center">TYPE (SB/MW/DW)</label>
+        <label class="col-span-1 text-[10px] font-bold text-gray-500 uppercase text-center">Depth (ft bls)</label>
+        <label class="col-span-1 text-[10px] font-bold text-gray-500 uppercase text-center">Surface Casing Depth</label>
+        <label class="col-span-1 text-[10px] font-bold text-gray-500 uppercase text-center">Split Spoons/Sonic Cores</label>
+      </div>
+      <div id="inputRows" class="space-y-2 mb-4">
+        <!-- Row 0: Default MW -->
+        <div class="well-row grid grid-cols-6 gap-2 items-center" data-index="0">
+          <input type="number" class="qty col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-blue-50 font-bold text-blue-800" value="0" min="0" oninput="toggleSC(this)">
+          <select class="rig col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)">
+            <option value="HSA">HSA</option>
+            <option value="Sonic">Sonic</option>
+            <option value="DPT_DAILY" selected>DPT Daily Rate</option>
+            <option value="COMPARE">Compare</option>
+          </select>
+          <select class="type col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)">
+            <option value="SB">SB (Boring)</option>
+            <option value="MW" selected>MW (Shallow)</option>
+            <option value="DW">DW (Deep)</option>
+          </select>
+          <input type="number" class="td col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="ft">
+          <input type="text" class="sc col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="Surface Casing Depth ft">
+          <select class="ss col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50">
+            <option value="NONE" selected>None</option>
+            <option value="OVA">Contingent on highest OVA</option>
+            <option value="2FT">Each 2 ft interval</option>
+          </select>
+        </div>
+        <!-- Row 1: Default DW -->
+        <div class="well-row grid grid-cols-6 gap-2 items-center" data-index="1">
+          <input type="number" class="qty col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-blue-50 font-bold text-blue-800" value="0" min="0" oninput="toggleSC(this)">
+          <select class="rig col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)">
+            <option value="HSA">HSA</option><option value="Sonic">Sonic</option><option value="DPT_DAILY">DPT Daily Rate</option><option value="COMPARE">Compare</option>
+          </select>
+          <select class="type col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)">
+            <option value="SB">SB</option><option value="MW">MW</option><option value="DW" selected>DW</option>
+          </select>
+          <input type="number" class="td col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="ft">
+          <input type="text" class="sc col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="Surface Casing Depth ft">
+          <select class="ss col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50">
+            <option value="NONE" selected>None</option><option value="OVA">Contingent on highest OVA</option><option value="2FT">Each 2 ft interval</option>
+          </select>
+        </div>
+        <!-- Row 2: Default SB -->
+        <div class="well-row grid grid-cols-6 gap-2 items-center" data-index="2">
+          <input type="number" class="qty col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-blue-50 font-bold text-blue-800" value="0" min="0" oninput="toggleSC(this)">
+          <select class="rig col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)">
+            <option value="HSA">HSA</option><option value="Sonic">Sonic</option><option value="DPT_DAILY">DPT Daily Rate</option><option value="COMPARE">Compare</option>
+          </select>
+          <select class="type col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)">
+            <option value="SB" selected>SB</option><option value="MW">MW</option><option value="DW">DW</option>
+          </select>
+          <input type="number" class="td col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="ft">
+          <input type="text" class="sc col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="Surface Casing Depth ft">
+          <select class="ss col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50">
+            <option value="NONE" selected>None</option><option value="OVA">Contingent on highest OVA</option><option value="2FT">Each 2 ft interval</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex justify-center gap-4 mb-4">
+        <button onclick="addRow()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-8 rounded text-xs transition duration-200 shadow-sm uppercase tracking-wider">
+          Add more rows
+        </button>
+        <button onclick="calculate()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-8 rounded text-xs transition duration-200 shadow-sm uppercase tracking-wider">
+          Process Pay Items
+        </button>
+        <button id="resetBtn" onclick="resetForm()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-1.5 px-8 rounded text-xs transition duration-200 shadow-sm uppercase tracking-wider">
+          Reset
+        </button>
+      </div>
+      <div id="results" class="hidden">
+        <div id="alerts" class="mb-4"></div>
+        <div id="resultsTables" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- Tables injected here -->
+        </div>
+        <div id="singleResult" class="w-full">
+          <!-- Standard table injected here -->
+        </div>
+        <!-- Disclaimer box -->
+        <div id="disclaimerBox" class="mt-4 p-3 bg-blue-50 border border-blue-200 text-blue-800 text-[10px] italic rounded hidden">
+          Disclaimer: since only soil borings were advanced, the DPT mobilization is being used for DPT daily rate.
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    // -------------------- Embedded ATC rates --------------------
+    const ATC_DATA = {"236":{"name":"AECOM TECHNICAL SERVICES, INC.","rates":{"3-4":1809.0,"3-5":2558.0,"4-1.A":54.0,"4-1.B":59.0,"4-1.C":49.0,"4-1.D":213.0,"4-3":4183.0,"4-5":45.0,"4-6":48.0,"4-7":46.0,"4-8":52.0,"4-9":59.0,"4-11":71.0,"4-12":65.0,"4-14":46.0,"4-15":50.0,"4-16":56.0,"4-17":61.0,"4-18":69.0,"4-19":68.0,"5-1":47.0,"5-2.A":55.0,"5-3.A":67.0,"5-6":78.0,"5-17":76.0}},"1364":{"name":"AEROSTAR SES LLC","rates":{"3-4":1480.0,"3-5":2233.0,"4-1.A":49.0,"4-1.B":54.0,"4-1.C":63.0,"4-1.D":237.0,"4-3":3646.0,"4-5":47.0,"4-6":51.0,"4-7":46.0,"4-8":51.0,"4-9":58.0,"4-11":60.0,"4-12":66.0,"4-14":41.0,"4-15":50.0,"4-16":59.0,"4-17":50.0,"4-18":56.0,"4-19":62.0,"5-1":46.0,"5-2.A":46.0,"5-3.A":56.0,"5-6":75.0,"5-17":52.0}},"1395":{"name":"AHS-GEAR LLC","rates":{"3-4":1745.0,"3-5":2500.0,"4-1.A":48.0,"4-1.B":58.0,"4-1.C":59.0,"4-1.D":200.0,"4-3":4200.0,"4-5":45.0,"4-6":49.0,"4-7":46.0,"4-8":50.0,"4-9":54.0,"4-11":63.0,"4-12":68.0,"4-14":50.0,"4-15":54.0,"4-16":60.0,"4-17":60.0,"4-18":64.0,"4-19":71.0,"5-1":39.0,"5-2.A":48.0,"5-3.A":60.0,"5-6":70.0,"5-17":73.0}},"6":{"name":"AMERICAN COMPLIANCE TECHNOLOGIES, INC. DBA ACT ENVIRONMENTAL & INFRASTRUCTURE, INC.","rates":{"3-4":1662.0,"3-5":2449.0,"4-1.A":51.0,"4-1.B":59.0,"4-1.C":64.0,"4-1.D":204.0,"4-3":4005.0,"4-5":45.0,"4-6":48.0,"4-7":52.0,"4-8":52.0,"4-9":57.0,"4-11":68.0,"4-12":73.0,"4-14":51.0,"4-15":56.0,"4-16":63.0,"4-17":61.0,"4-18":69.0,"4-19":76.0,"5-1":43.0,"5-2.A":53.0,"5-3.A":67.0,"5-6":75.0,"5-17":80.0}},"10":{"name":"AMERICAN ENVIRONMENTAL ENGINEERING OF FLORIDA, INC","rates":{"3-4":1500.0,"3-5":2000.0,"4-1.A":52.0,"4-1.B":56.0,"4-1.C":60.0,"4-1.D":175.0,"4-3":4500.0,"4-5":56.0,"4-6":60.0,"4-7":58.0,"4-8":63.0,"4-9":66.0,"4-11":75.0,"4-12":75.0,"4-14":55.0,"4-15":60.0,"4-16":65.0,"4-17":65.0,"4-18":70.0,"4-19":75.0,"5-1":50.0,"5-2.A":60.0,"5-3.A":65.0,"5-6":55.0,"5-17":40.0}},"1163":{"name":"AMERICAN MANAGEMENT RESOURCES CORPORATION","rates":{"3-4":1700.0,"3-5":2500.0,"4-1.A":50.0,"4-1.B":55.0,"4-1.C":65.0,"4-1.D":225.0,"4-3":4200.0,"4-5":48.0,"4-6":51.0,"4-7":56.0,"4-8":55.0,"4-9":60.0,"4-11":70.0,"4-12":75.0,"4-14":55.0,"4-15":60.0,"4-16":65.0,"4-17":65.0,"4-18":72.0,"4-19":77.0,"5-1":45.0,"5-2.A":55.0,"5-3.A":70.0,"5-6":75.0,"5-17":80.0}},"431":{"name":"ANDREYEV ENGINEERING, INC.","rates":{"3-4":1300.0,"3-5":1550.0,"4-1.A":42.0,"4-1.B":44.0,"4-1.C":5.0,"4-1.D":44.0,"4-3":3450.0,"4-5":39.0,"4-6":41.0,"4-7":10.0,"4-8":41.0,"4-9":46.0,"4-11":60.0,"4-12":63.0,"4-14":44.0,"4-15":49.0,"4-16":10.0,"4-17":48.0,"4-18":51.0,"4-19":10.0,"5-1":37.0,"5-2.A":46.0,"5-3.A":53.0,"5-6":85.0,"5-17":39.0}},"1224":{"name":"APEX COMPANIES, LLC","rates":{"3-4":1591.0,"3-5":2400.0,"4-1.A":56.0,"4-1.B":62.0,"4-1.C":67.0,"4-1.D":194.0,"4-3":3099.0,"4-5":47.0,"4-6":49.0,"4-7":51.0,"4-8":49.0,"4-9":55.0,"4-11":66.0,"4-12":75.0,"4-14":55.0,"4-15":58.0,"4-16":65.0,"4-17":60.0,"4-18":64.0,"4-19":70.0,"5-1":47.0,"5-2.A":50.0,"5-3.A":65.0,"5-6":70.0,"5-17":64.0}},"1077":{"name":"APTIM ENVIRONMENTAL & INFRASTRUCTURE, LLC","rates":{"3-4":1900.0,"3-5":3000.0,"4-1.A":55.0,"4-1.B":60.0,"4-1.C":55.0,"4-1.D":200.0,"4-3":4600.0,"4-5":48.0,"4-6":48.0,"4-7":50.0,"4-8":60.0,"4-9":58.0,"4-11":65.0,"4-12":75.0,"4-14":55.0,"4-15":57.0,"4-16":64.0,"4-17":66.0,"4-18":73.0,"4-19":77.0,"5-1":50.0,"5-2.A":58.0,"5-3.A":74.0,"5-6":76.0,"5-17":75.0}},"145":{"name":"ARCADIS U.S., INC.","rates":{"3-4":1255.0,"3-5":2269.0,"4-1.A":47.0,"4-1.B":48.0,"4-1.C":52.0,"4-1.D":159.0,"4-3":3511.0,"4-5":40.0,"4-6":42.0,"4-7":40.0,"4-8":51.0,"4-9":46.0,"4-11":63.0,"4-12":55.0,"4-14":42.0,"4-15":45.0,"4-16":51.0,"4-17":46.0,"4-18":51.0,"4-19":60.0,"5-1":35.0,"5-2.A":51.0,"5-3.A":62.0,"5-6":65.0,"5-17":55.0}},"787":{"name":"ATC GROUP SERVICES, LLC DBA ATLAS TECHNICAL","rates":{"3-4":1676.0,"3-5":2500.0,"4-1.A":48.0,"4-1.B":55.0,"4-1.C":64.0,"4-1.D":185.0,"4-3":4100.0,"4-5":37.0,"4-6":40.0,"4-7":46.0,"4-8":45.0,"4-9":50.0,"4-11":61.0,"4-12":62.0,"4-14":51.0,"4-15":55.0,"4-16":68.0,"4-17":60.0,"4-18":62.0,"4-19":75.0,"5-1":45.0,"5-2.A":50.0,"5-3.A":60.0,"5-6":68.0,"5-17":52.0}},"1443":{"name":"BLYTHE CONSULTING AND ENVIRONMENTAL, LLC","rates":{"3-4":1834.0,"3-5":2639.0,"4-1.A":35.0,"4-1.B":40.0,"4-1.C":46.0,"4-1.D":175.0,"4-3":3191.0,"4-5":31.0,"4-6":33.0,"4-7":36.0,"4-8":35.0,"4-9":40.0,"4-11":65.0,"4-12":55.0,"4-14":45.0,"4-15":50.0,"4-16":55.0,"4-17":45.0,"4-18":49.0,"4-19":54.0,"5-1":31.0,"5-2.A":42.0,"5-3.A":47.0,"5-6":70.0,"5-17":65.0}},"1051":{"name":"BTEX ENGINEERING, INC.","rates":{"3-4":1550.0,"3-5":2450.0,"4-1.A":52.0,"4-1.B":39.0,"4-1.C":42.0,"4-1.D":195.0,"4-3":4250.0,"4-5":48.0,"4-6":49.0,"4-7":45.0,"4-8":54.0,"4-9":40.0,"4-11":68.0,"4-12":75.0,"4-14":52.0,"4-15":58.0,"4-16":50.0,"4-17":63.0,"4-18":69.0,"4-19":51.0,"5-1":45.0,"5-2.A":56.0,"5-3.A":64.0,"5-6":75.0,"5-17":75.0}},"556":{"name":"CHEROKEE ENTERPRISES, INC.","rates":{"3-4":1250.0,"3-5":2500.0,"4-1.A":44.0,"4-1.B":53.0,"4-1.C":57.0,"4-1.D":193.0,"4-3":3455.0,"4-5":39.0,"4-6":43.0,"4-7":50.0,"4-8":46.0,"4-9":50.0,"4-11":60.0,"4-12":66.0,"4-14":44.0,"4-15":49.0,"4-16":54.0,"4-17":52.0,"4-18":59.0,"4-19":67.0,"5-1":37.0,"5-2.A":42.0,"5-3.A":55.0,"5-6":55.0,"5-17":55.0}},"453":{"name":"CREATIVE ENVIRONMENTAL SOLUTIONS, INC.","rates":{"3-4":1800.0,"3-5":2640.0,"4-1.A":40.0,"4-1.B":45.0,"4-1.C":50.0,"4-1.D":175.0,"4-3":4300.0,"4-5":48.0,"4-6":50.0,"4-7":54.0,"4-8":54.0,"4-9":56.0,"4-11":66.0,"4-12":76.0,"4-14":49.0,"4-15":54.0,"4-16":62.0,"4-17":62.0,"4-18":65.0,"4-19":70.0,"5-1":39.0,"5-2.A":46.0,"5-3.A":52.0,"5-6":65.0,"5-17":65.0}},"299":{"name":"EARTH SYSTEMS, LLC","rates":{"3-4":1800.0,"3-5":2400.0,"4-1.A":55.0,"4-1.B":55.0,"4-1.C":47.0,"4-1.D":220.0,"4-3":4180.0,"4-5":50.0,"4-6":48.0,"4-7":50.0,"4-8":55.0,"4-9":55.0,"4-11":50.0,"4-12":54.0,"4-14":55.0,"4-15":57.0,"4-16":46.0,"4-17":59.0,"4-18":65.0,"4-19":55.0,"5-1":31.0,"5-2.A":50.0,"5-3.A":55.0,"5-6":59.0,"5-17":52.0}},"1118":{"name":"EAST COAST ENVIRONMENTAL, INC.","rates":{"3-4":1800.0,"3-5":2550.0,"4-1.A":45.0,"4-1.B":45.0,"4-1.C":20.0,"4-1.D":200.0,"4-3":4000.0,"4-5":32.0,"4-6":35.0,"4-7":38.0,"4-8":45.0,"4-9":50.0,"4-11":52.0,"4-12":55.0,"4-14":42.0,"4-15":45.0,"4-16":45.0,"4-17":49.0,"4-18":62.0,"4-19":20.0,"5-1":12.0,"5-2.A":56.0,"5-3.A":49.0,"5-6":57.0,"5-17":20.0}},"1373":{"name":"ECOTECH ENVIRONMENTAL SERVICES, INC.","rates":{"3-4":1980.0,"3-5":2970.0,"4-1.A":50.0,"4-1.B":60.0,"4-1.C":60.0,"4-1.D":220.0,"4-3":4000.0,"4-5":42.0,"4-6":44.0,"4-7":50.0,"4-8":50.0,"4-9":55.0,"4-11":68.0,"4-12":72.0,"4-14":48.0,"4-15":55.0,"4-16":64.0,"4-17":60.0,"4-18":65.0,"4-19":70.0,"5-1":38.0,"5-2.A":50.0,"5-3.A":65.0,"5-6":75.0,"5-17":80.0}},"1158":{"name":"ECS-FLORIDA, LLC","rates":{"3-4":1846.0,"3-5":2754.0,"4-1.A":48.0,"4-1.B":54.0,"4-1.C":55.0,"4-1.D":180.0,"4-3":3800.0,"4-5":37.0,"4-6":44.0,"4-7":55.0,"4-8":42.0,"4-9":48.0,"4-11":49.0,"4-12":56.0,"4-14":36.0,"4-15":40.0,"4-16":46.0,"4-17":46.0,"4-18":49.0,"4-19":55.0,"5-1":31.0,"5-2.A":45.0,"5-3.A":48.0,"5-6":53.0,"5-17":54.0}},"440":{"name":"ENVIROTRAC LTD,  INC.","rates":{"3-4":1630.0,"3-5":2600.0,"4-1.A":40.0,"4-1.B":45.0,"4-1.C":48.0,"4-1.D":165.0,"4-3":3300.0,"4-5":40.0,"4-6":42.0,"4-7":40.0,"4-8":51.0,"4-9":46.0,"4-11":63.0,"4-12":55.0,"4-14":42.0,"4-15":45.0,"4-16":51.0,"4-17":46.0,"4-18":51.0,"4-19":60.0,"5-1":35.0,"5-2.A":51.0,"5-3.A":62.0,"5-6":65.0,"5-17":55.0}},"542":{"name":"ENVIRONMENTAL RISK MANAGEMENT, LLC, DBA ERMI","rates":{"3-4":1600.0,"3-5":2500.0,"4-1.A":45.0,"4-1.B":55.0,"4-1.C":55.0,"4-1.D":150.0,"4-3":3900.0,"4-5":48.0,"4-6":51.0,"4-7":52.0,"4-8":56.0,"4-9":58.0,"4-11":55.0,"4-12":63.0,"4-14":50.0,"4-15":53.0,"4-16":55.0,"4-17":67.0,"4-18":75.0,"4-19":75.0,"5-1":40.0,"5-2.A":58.0,"5-3.A":58.0,"5-6":70.0,"5-17":75.0}},"1397":{"name":"ENVISORS-ENSOUTH JOINT VENTURE, LLC","rates":{"3-4":1830.0,"3-5":2600.0,"4-1.A":40.0,"4-1.B":40.0,"4-1.C":40.0,"4-1.D":165.0,"4-3":3000.0,"4-5":32.0,"4-6":31.0,"4-7":34.0,"4-8":32.0,"4-9":38.0,"4-11":47.0,"4-12":56.0,"4-14":15.0,"4-15":15.0,"4-16":15.0,"4-17":45.0,"4-18":46.0,"4-19":47.0,"5-1":34.0,"5-2.A":50.0,"5-3.A":53.0,"5-6":55.0,"5-17":45.0}},"1317":{"name":"FOURTUNE 4, INC D/B/A ENVIRONMENTAL ASSESSMENTS & CONSULTING","rates":{"3-4":1650.0,"3-5":2415.0,"4-1.A":41.0,"4-1.B":40.0,"4-1.C":45.0,"4-1.D":160.0,"4-3":3300.0,"4-5":36.0,"4-6":36.0,"4-7":35.0,"4-8":40.0,"4-9":44.0,"4-11":52.0,"4-12":51.0,"4-14":40.0,"4-15":45.0,"4-16":50.0,"4-17":48.0,"4-18":52.0,"4-19":54.0,"5-1":32.0,"5-2.A":40.0,"5-3.A":50.0,"5-6":60.0,"5-17":58.0}},"1256":{"name":"FREELAND ENVIRONMENTAL ASSOCIATES, INC.","rates":{"3-4":1800.0,"3-5":2300.0,"4-1.A":50.0,"4-1.B":60.0,"4-1.C":40.0,"4-1.D":160.0,"4-3":3000.0,"4-5":35.0,"4-6":40.0,"4-7":45.0,"4-8":40.0,"4-9":45.0,"4-11":50.0,"4-12":55.0,"4-14":53.0,"4-15":55.0,"4-16":60.0,"4-17":50.0,"4-18":55.0,"4-19":60.0,"5-1":40.0,"5-2.A":50.0,"5-3.A":45.0,"5-6":75.0,"5-17":60.0}},"1147":{"name":"FRS ENVIRONMENTAL REMEDIATION, INC. DBA MONTROSE ENVIRONMENT","rates":{"3-4":2000.0,"3-5":2700.0,"4-1.A":57.0,"4-1.B":57.0,"4-1.C":57.0,"4-1.D":225.0,"4-3":4500.0,"4-5":50.0,"4-6":53.0,"4-7":57.0,"4-8":58.0,"4-9":60.0,"4-11":75.0,"4-12":77.0,"4-14":60.0,"4-15":65.0,"4-16":70.0,"4-17":70.0,"4-18":75.0,"4-19":82.0,"5-1":47.0,"5-2.A":58.0,"5-3.A":74.0,"5-6":83.0,"5-17":80.0}},"1386":{"name":"GEORGIA OILMEN'S SERVICES, INC.","rates":{"3-4":1750.0,"3-5":2665.0,"4-1.A":56.0,"4-1.B":65.0,"4-1.C":67.0,"4-1.D":220.0,"4-3":4250.0,"4-5":48.0,"4-6":53.0,"4-7":57.0,"4-8":58.0,"4-9":63.0,"4-11":70.0,"4-12":75.0,"4-14":55.0,"4-15":60.0,"4-16":65.0,"4-17":65.0,"4-18":75.0,"4-19":84.0,"5-1":45.0,"5-2.A":58.0,"5-3.A":70.0,"5-6":75.0,"5-17":80.0}},"360":{"name":"GEOSYNTEC CONSULTANTS, INC.","rates":{"3-4":1755.0,"3-5":2525.0,"4-1.A":39.0,"4-1.B":45.0,"4-1.C":57.0,"4-1.D":198.0,"4-3":4827.0,"4-5":51.0,"4-6":59.0,"4-7":57.0,"4-8":64.0,"4-9":66.0,"4-11":77.0,"4-12":79.0,"4-14":57.0,"4-15":60.0,"4-16":67.0,"4-17":65.0,"4-18":67.0,"4-19":76.0,"5-1":48.0,"5-2.A":52.0,"5-3.A":63.0,"5-6":86.0,"5-17":50.0}},"311":{"name":"GHD SERVICES, INC.","rates":{"3-4":1834.0,"3-5":2639.0,"4-1.A":42.0,"4-1.B":55.0,"4-1.C":43.0,"4-1.D":219.0,"4-3":4457.0,"4-5":50.0,"4-6":53.0,"4-7":56.0,"4-8":58.0,"4-9":63.0,"4-11":75.0,"4-12":78.0,"4-14":51.0,"4-15":57.0,"4-16":66.0,"4-17":57.0,"4-18":63.0,"4-19":71.0,"5-1":37.0,"5-2.A":51.0,"5-3.A":72.0,"5-6":61.0,"5-17":69.0}},"144":{"name":"GLE ASSOCIATES, INC.","rates":{"3-4":2100.0,"3-5":3100.0,"4-1.A":45.0,"4-1.B":55.0,"4-1.C":65.0,"4-1.D":210.0,"4-3":3155.0,"4-5":34.0,"4-6":40.0,"4-7":50.0,"4-8":60.0,"4-9":45.0,"4-11":55.0,"4-12":61.0,"4-14":50.0,"4-15":50.0,"4-16":55.0,"4-17":55.0,"4-18":55.0,"4-19":70.0,"5-1":40.0,"5-2.A":60.0,"5-3.A":51.0,"5-6":55.0,"5-17":70.0}},"1070":{"name":"GROUNDWATER & ENVIRONMENTAL SERVICES, INC.","rates":{"3-4":1250.0,"3-5":2100.0,"4-1.A":42.0,"4-1.B":50.0,"4-1.C":59.0,"4-1.D":147.0,"4-3":3500.0,"4-5":41.0,"4-6":38.0,"4-7":40.0,"4-8":38.0,"4-9":44.0,"4-11":57.0,"4-12":62.0,"4-14":39.0,"4-15":44.0,"4-16":47.0,"4-17":46.0,"4-18":51.0,"4-19":57.0,"5-1":37.0,"5-2.A":47.0,"5-3.A":58.0,"5-6":65.0,"5-17":60.0}},"1184":{"name":"HANDEX CONSULTING AND REMEDIATION-SOUTHEAST, LLC","rates":{"3-4":1846.0,"3-5":2721.0,"4-1.A":51.0,"4-1.B":53.0,"4-1.C":49.0,"4-1.D":226.0,"4-3":4450.0,"4-5":45.0,"4-6":48.0,"4-7":40.0,"4-8":58.0,"4-9":51.0,"4-11":56.0,"4-12":60.0,"4-14":46.0,"4-15":50.0,"4-16":52.0,"4-17":68.0,"4-18":76.0,"4-19":59.0,"5-1":43.0,"5-2.A":58.0,"5-3.A":59.0,"5-6":75.0,"5-17":73.0}},"163":{"name":"HSW Consulting, LLC","rates":{"3-4":1320.0,"3-5":2200.0,"4-1.A":49.0,"4-1.B":50.0,"4-1.C":52.0,"4-1.D":193.0,"4-3":3640.0,"4-5":41.0,"4-6":44.0,"4-7":46.0,"4-8":50.0,"4-9":49.0,"4-11":45.0,"4-12":49.0,"4-14":50.0,"4-15":56.0,"4-16":58.0,"4-17":56.0,"4-18":64.0,"4-19":82.0,"5-1":41.0,"5-2.A":48.0,"5-3.A":63.0,"5-6":73.0,"5-17":61.0}},"921":{"name":"HYDRO-LOGIC ASSOCIATES, INC.","rates":{"3-4":1750.0,"3-5":2400.0,"4-1.A":46.0,"4-1.B":53.0,"4-1.C":59.0,"4-1.D":180.0,"4-3":3900.0,"4-5":41.0,"4-6":46.0,"4-7":51.0,"4-8":49.0,"4-9":55.0,"4-11":62.0,"4-12":68.0,"4-14":53.0,"4-15":57.0,"4-16":62.0,"4-17":61.0,"4-18":69.0,"4-19":79.0,"5-1":45.0,"5-2.A":46.0,"5-3.A":53.0,"5-6":60.0,"5-17":55.0}},"176":{"name":"JIM STIDHAM & ASSOCIATES, INC.","rates":{"3-4":1650.0,"3-5":2550.0,"4-1.A":53.0,"4-1.B":58.0,"4-1.C":63.0,"4-1.D":187.0,"4-3":4445.0,"4-5":56.0,"4-6":58.0,"4-7":58.0,"4-8":62.0,"4-9":66.0,"4-11":72.0,"4-12":80.0,"4-14":62.0,"4-15":65.0,"4-16":71.0,"4-17":67.0,"4-18":70.0,"4-19":75.0,"5-1":48.0,"5-2.A":62.0,"5-3.A":69.0,"5-6":71.0,"5-17":42.0}},"1198":{"name":"KIMBERLY ANN BROWN AND ASSOCIATES, INC.","rates":{"3-4":1831.0,"3-5":2700.0,"4-1.A":52.0,"4-1.B":58.0,"4-1.C":60.0,"4-1.D":233.0,"4-3":3738.0,"4-5":44.0,"4-6":48.0,"4-7":57.0,"4-8":50.0,"4-9":59.0,"4-11":74.0,"4-12":81.0,"4-14":48.0,"4-15":54.0,"4-16":59.0,"4-17":58.0,"4-18":68.0,"4-19":71.0,"5-1":48.0,"5-2.A":54.0,"5-3.A":68.0,"5-6":71.0,"5-17":78.0}},"1338":{"name":"NOVA ENGINEERING AND ENVIRONMENTAL, LLC, D/B/A MAS ENVIRONMENTAL","rates":{"3-4":1662.0,"3-5":2449.0,"4-1.A":51.0,"4-1.B":59.0,"4-1.C":42.0,"4-1.D":204.0,"4-3":4005.0,"4-5":45.0,"4-6":48.0,"4-7":35.0,"4-8":52.0,"4-9":57.0,"4-11":68.0,"4-12":73.0,"4-14":51.0,"4-15":56.0,"4-16":42.0,"4-17":61.0,"4-18":69.0,"4-19":51.0,"5-1":43.0,"5-2.A":53.0,"5-3.A":67.0,"5-6":75.0,"5-17":75.0}},"600":{"name":"MDM SERVICES, INC.","rates":{"3-4":1900.0,"3-5":2600.0,"4-1.A":55.0,"4-1.B":55.0,"4-1.C":55.0,"4-1.D":225.0,"4-3":4500.0,"4-5":45.0,"4-6":40.0,"4-7":35.0,"4-8":50.0,"4-9":50.0,"4-11":65.0,"4-12":65.0,"4-14":60.0,"4-15":60.0,"4-16":60.0,"4-17":57.0,"4-18":75.0,"4-19":75.0,"5-1":50.0,"5-2.A":60.0,"5-3.A":55.0,"5-6":80.0,"5-17":55.0}},"1418":{"name":"NOVELESOLUTIONS, INC","rates":{"3-4":1500.0,"3-5":2100.0,"4-1.A":53.0,"4-1.B":53.0,"4-1.C":55.0,"4-1.D":180.0,"4-3":3382.0,"4-5":45.0,"4-6":40.0,"4-7":44.0,"4-8":40.0,"4-9":50.0,"4-11":64.0,"4-12":68.0,"4-14":49.0,"4-15":57.0,"4-16":60.0,"4-17":55.0,"4-18":60.0,"4-19":65.0,"5-1":36.0,"5-2.A":58.0,"5-3.A":55.0,"5-6":72.0,"5-17":60.0}},"218":{"name":"PANHANDLE INDUSTRIES, INC. DBA PI ENVIRONMENTAL, INC.","rates":{"3-4":1825.0,"3-5":2650.0,"4-1.A":45.0,"4-1.B":50.0,"4-1.C":55.0,"4-1.D":175.0,"4-3":4400.0,"4-5":50.0,"4-6":51.0,"4-7":51.0,"4-8":55.0,"4-9":56.0,"4-11":74.0,"4-12":75.0,"4-14":46.0,"4-15":50.0,"4-16":53.0,"4-17":54.0,"4-18":60.0,"4-19":63.0,"5-1":45.0,"5-2.A":58.0,"5-3.A":55.0,"5-6":80.0,"5-17":48.0}},"1025":{"name":"PPM CONSULTANTS, INC.","rates":{"3-4":1800.0,"3-5":2500.0,"4-1.A":58.0,"4-1.B":67.0,"4-1.C":66.0,"4-1.D":225.0,"4-3":4200.0,"4-5":55.0,"4-6":60.0,"4-7":56.0,"4-8":60.0,"4-9":65.0,"4-11":75.0,"4-12":80.0,"4-14":60.0,"4-15":65.0,"4-16":70.0,"4-17":71.0,"4-18":75.0,"4-19":80.0,"5-1":50.0,"5-2.A":60.0,"5-3.A":75.0,"5-6":85.0,"5-17":75.0}},"222":{"name":"PROFESSIONAL SERVICE INDUSTRIES, INC.","rates":{"3-4":1800.0,"3-5":2300.0,"4-1.A":60.0,"4-1.B":65.0,"4-1.C":68.0,"4-1.D":200.0,"4-3":3800.0,"4-5":48.0,"4-6":50.0,"4-7":40.0,"4-8":58.0,"4-9":60.0,"4-11":75.0,"4-12":75.0,"4-14":55.0,"4-15":60.0,"4-16":60.0,"4-17":66.0,"4-18":74.0,"4-19":60.0,"5-1":45.0,"5-2.A":60.0,"5-3.A":65.0,"5-6":80.0,"5-17":80.0}},"1087":{"name":"RES FLORIDA CONSULTING, LLC","rates":{"3-4":1700.0,"3-5":2300.0,"4-1.A":35.0,"4-1.B":40.0,"4-1.C":46.0,"4-1.D":165.0,"4-3":3200.0,"4-5":35.0,"4-6":44.0,"4-7":35.0,"4-8":52.0,"4-9":38.0,"4-11":49.0,"4-12":59.0,"4-14":38.0,"4-15":41.0,"4-16":48.0,"4-17":44.0,"4-18":47.0,"4-19":54.0,"5-1":30.0,"5-2.A":37.0,"5-3.A":50.0,"5-6":56.0,"5-17":52.0}},"302":{"name":"S&ME, INC.","rates":{"3-4":1600.0,"3-5":2041.0,"4-1.A":46.0,"4-1.B":53.0,"4-1.C":53.0,"4-1.D":185.0,"4-3":3400.0,"4-5":32.0,"4-6":38.0,"4-7":41.0,"4-8":40.0,"4-9":45.0,"4-11":55.0,"4-12":60.0,"4-14":42.0,"4-15":45.0,"4-16":56.0,"4-17":49.0,"4-18":57.0,"4-19":67.0,"5-1":35.0,"5-2.A":46.0,"5-3.A":57.0,"5-6":65.0,"5-17":50.0}},"1244":{"name":"SOUTHEASTERN PETROLEUM CONTRACTORS, INC.","rates":{"3-4":1750.0,"3-5":2500.0,"4-1.A":40.0,"4-1.B":45.0,"4-1.C":50.0,"4-1.D":163.0,"4-3":3600.0,"4-5":40.0,"4-6":35.0,"4-7":40.0,"4-8":33.0,"4-9":40.0,"4-11":50.0,"4-12":55.0,"4-14":52.0,"4-15":55.0,"4-16":50.0,"4-17":45.0,"4-18":50.0,"4-19":55.0,"5-1":35.0,"5-2.A":40.0,"5-3.A":50.0,"5-6":55.0,"5-17":65.0}},"238":{"name":"STEARNS, CONRAD AND SCHMIDT, CONSULTING ENGINEERS, INC. DBA SCS ENGINEERS","rates":{"3-4":1000.0,"3-5":1500.0,"4-1.A":46.0,"4-1.B":56.0,"4-1.C":45.0,"4-1.D":210.0,"4-3":3800.0,"4-5":37.0,"4-6":39.0,"4-7":47.0,"4-8":40.0,"4-9":43.0,"4-11":56.0,"4-12":60.0,"4-14":41.0,"4-15":45.0,"4-16":58.0,"4-17":51.0,"4-18":58.0,"4-19":81.0,"5-1":34.0,"5-2.A":43.0,"5-3.A":53.0,"5-6":63.0,"5-17":52.0}},"1354":{"name":"TAYLOR ENVIRONMENTAL CONSULTING, LLC","rates":{"3-4":2120.0,"3-5":2340.0,"4-1.A":53.0,"4-1.B":53.0,"4-1.C":35.0,"4-1.D":181.0,"4-3":4395.0,"4-5":49.0,"4-6":48.0,"4-7":40.0,"4-8":56.0,"4-9":55.0,"4-11":44.0,"4-12":49.0,"4-14":49.0,"4-15":50.0,"4-16":38.0,"4-17":58.0,"4-18":57.0,"4-19":51.0,"5-1":41.0,"5-2.A":52.0,"5-3.A":54.0,"5-6":51.0,"5-17":80.0}},"559":{"name":"TERRA-COM ENVIRONMENTAL CONSULTING, INC.","rates":{"3-4":1300.0,"3-5":1950.0,"4-1.A":35.0,"4-1.B":40.0,"4-1.C":43.0,"4-1.D":190.0,"4-3":3500.0,"4-5":30.0,"4-6":32.0,"4-7":35.0,"4-8":48.0,"4-9":40.0,"4-11":58.0,"4-12":50.0,"4-14":50.0,"4-15":50.0,"4-16":50.0,"4-17":60.0,"4-18":60.0,"4-19":60.0,"5-1":29.0,"5-2.A":50.0,"5-3.A":60.0,"5-6":70.0,"5-17":75.0}},"1128":{"name":"TERRACON CONSULTANTS, INC.","rates":{"3-4":1585.0,"3-5":2500.0,"4-1.A":50.0,"4-1.B":60.0,"4-1.C":45.0,"4-1.D":220.0,"4-3":4100.0,"4-5":50.0,"4-6":52.0,"4-7":38.0,"4-8":58.0,"4-9":40.0,"4-11":47.0,"4-12":50.0,"4-14":57.0,"4-15":63.0,"4-16":70.0,"4-17":67.0,"4-18":75.0,"4-19":82.0,"5-1":42.0,"5-2.A":58.0,"5-3.A":70.0,"5-6":75.0,"5-17":60.0}},"1438":{"name":"TE ALLIANT, LLC","rates":{"3-4":1800.0,"3-5":2550.0,"4-1.A":38.0,"4-1.B":44.0,"4-1.C":52.0,"4-1.D":172.0,"4-3":3950.0,"4-5":50.0,"4-6":52.0,"4-7":55.0,"4-8":54.0,"4-9":59.0,"4-11":71.0,"4-12":79.0,"4-14":57.0,"4-15":60.0,"4-16":68.0,"4-17":63.0,"4-18":71.0,"4-19":81.0,"5-1":47.0,"5-2.A":57.0,"5-3.A":67.0,"5-6":81.0,"5-17":71.0}},"1442":{"name":"THE BLACKLEDGE GROUP, INC","rates":{"3-4":600.0,"3-5":1900.0,"4-1.A":57.0,"4-1.B":65.0,"4-1.C":65.0,"4-1.D":172.0,"4-3":3280.0,"4-5":50.0,"4-6":53.0,"4-7":57.0,"4-8":55.0,"4-9":60.0,"4-11":71.0,"4-12":80.0,"4-14":38.0,"4-15":41.0,"4-16":49.0,"4-17":41.0,"4-18":47.0,"4-19":52.0,"5-1":29.0,"5-2.A":35.0,"5-3.A":42.0,"5-6":65.0,"5-17":67.0}},"265":{"name":"UES PROFESSIONAL SOLUTIONS, LLC","rates":{"3-4":1650.0,"3-5":2500.0,"4-1.A":45.0,"4-1.B":55.0,"4-1.C":65.0,"4-1.D":205.0,"4-3":3600.0,"4-5":42.0,"4-6":45.0,"4-7":48.0,"4-8":42.0,"4-9":48.0,"4-11":61.0,"4-12":72.0,"4-14":48.0,"4-15":52.0,"4-16":62.0,"4-17":58.0,"4-18":62.0,"4-19":72.0,"5-1":39.0,"5-2.A":49.0,"5-3.A":62.0,"5-6":67.0,"5-17":75.0}},"433":{"name":"UNIVERSAL SOLUTIONS, INC.","rates":{"3-4":1750.0,"3-5":2600.0,"4-1.A":54.0,"4-1.B":63.0,"4-1.C":59.0,"4-1.D":207.0,"4-3":4500.0,"4-5":45.0,"4-6":47.0,"4-7":46.0,"4-8":55.0,"4-9":48.0,"4-11":57.0,"4-12":65.0,"4-14":51.0,"4-15":56.0,"4-16":61.0,"4-17":57.0,"4-18":68.0,"4-19":78.0,"5-1":44.0,"5-2.A":58.0,"5-3.A":60.0,"5-6":72.0,"5-17":70.0}},"1010":{"name":"VALUE ENVIRONMENTAL SERVICES, INC.","rates":{"3-4":1700.0,"3-5":2650.0,"4-1.A":60.0,"4-1.B":68.0,"4-1.C":41.0,"4-1.D":160.0,"4-3":3700.0,"4-5":35.0,"4-6":40.0,"4-7":50.0,"4-8":60.0,"4-9":45.0,"4-11":65.0,"4-12":65.0,"4-14":45.0,"4-15":45.0,"4-16":45.0,"4-17":50.0,"4-18":50.0,"4-19":50.0,"5-1":30.0,"5-2.A":45.0,"5-3.A":45.0,"5-6":75.0,"5-17":47.0}},"274":{"name":"WATER AND AIR RESEARCH INCORPORATED","rates":{"3-4":1500.0,"3-5":2200.0,"4-1.A":44.0,"4-1.B":51.0,"4-1.C":56.0,"4-1.D":180.0,"4-3":3525.0,"4-5":39.0,"4-6":42.0,"4-7":45.0,"4-8":46.0,"4-9":49.0,"4-11":59.0,"4-12":64.0,"4-14":45.0,"4-15":49.0,"4-16":55.0,"4-17":54.0,"4-18":61.0,"4-19":67.0,"5-1":38.0,"5-2.A":46.0,"5-3.A":59.0,"5-6":66.0,"5-17":72.0}},"1366":{"name":"WES ENVIRONMENTAL, LLC","rates":{"3-4":1700.0,"3-5":2100.0,"4-1.A":45.0,"4-1.B":52.0,"4-1.C":55.0,"4-1.D":200.0,"4-3":3550.0,"4-5":45.0,"4-6":50.0,"4-7":50.0,"4-8":50.0,"4-9":55.0,"4-11":60.0,"4-12":65.0,"4-14":45.0,"4-15":50.0,"4-16":55.0,"4-17":55.0,"4-18":65.0,"4-19":70.0,"5-1":38.0,"5-2.A":50.0,"5-3.A":60.0,"5-6":70.0,"5-17":70.0}},"462":{"name":"ADVANCED ENVIRONMENTAL TECHNOLOGIES, LLC.","rates":{"3-4":1700.0,"3-5":2000.0,"4-1.A":55.0,"4-1.B":58.0,"4-1.C":55.0,"4-1.D":205.0,"4-3":4100.0,"4-5":45.0,"4-6":48.0,"4-7":50.0,"4-8":50.0,"4-9":60.0,"4-11":68.0,"4-12":74.0,"4-14":55.0,"4-15":55.0,"4-16":60.0,"4-17":60.0,"4-18":71.0,"4-19":80.0,"5-1":42.0,"5-2.A":46.0,"5-3.A":60.0,"5-6":73.0,"5-17":55.0}}};
+    const PAY_ITEM_META = {"3-4":{"desc":"DPT Rig and Support Vehicles Mobilization","unit":"RNDTP"},"3-5":{"desc":"Drill Rig and Support Vehicles Mobilization (hollow stem auger, mud rotary or sonic)","unit":"RNDTP"},"4-3":{"desc":"Direct Push Technology (DPT) Rig and Equipment","unit":"DAY"},"4-5":{"desc":"HSA or MR Boring, <= 6 inch diameter, < 50 foot total depth","unit":"FOOT"},"4-6":{"desc":"HSA or MR Boring, <= 6 inch diameter, 50 to 100 foot total depth","unit":"FOOT"},"4-7":{"desc":"HSA or MR Boring, <= 6 inch diameter, > 100 foot total depth","unit":"FOOT"},"4-8":{"desc":"HSA or MR Boring, > 6 to 10 inch diameter, < 50 foot total depth","unit":"FOOT"},"4-9":{"desc":"HSA or MR Boring, > 6 to 10 inch diameter, 50 to 100 foot total depth","unit":"FOOT"},"4-11":{"desc":"HSA or MR Boring, > 10 to 14 inch diameter, < 50 foot total depth","unit":"FOOT"},"4-12":{"desc":"HSA or MR Boring, > 10 to 14 inch diameter, 50 to 100 foot total depth","unit":"FOOT"},"4-14":{"desc":"Sonic Boring, <= 6 inch diameter, < 50 foot total depth","unit":"FOOT"},"4-15":{"desc":"Sonic Boring, <= 6 inch diameter, 50 to 100 foot total depth","unit":"FOOT"},"4-16":{"desc":"Sonic Boring, <= 6 inch diameter, > 100 foot total depth","unit":"FOOT"},"4-17":{"desc":"Sonic Boring, > 6 to 10 inch diameter, < 50 foot total depth","unit":"FOOT"},"4-18":{"desc":"Sonic Boring, > 6 to 10 inch diameter, 50 to 100 foot total depth","unit":"FOOT"},"4-19":{"desc":"Sonic Boring, > 6 to 10 inch diameter, > 100 foot total depth","unit":"FOOT"},"4-1.A":{"desc":"Split Spoon Sampling – 2 foot (during boring) < 50 feet","unit":"SPN"},"4-1.B":{"desc":"Split Spoon Sampling – 2 foot (during boring) 50 to 100 feet","unit":"SPN"},"4-1.C":{"desc":"Split Spoon Sampling – 2 foot (during boring) > 100 feet","unit":"SPN"},"4-1.D":{"desc":"Sonic Core Sampling - 5 or 10 foot (during boring)","unit":"CORE"},"5-1":{"desc":"Well Installation - 1 inch diameter (vertical)","unit":"FOOT"},"5-2.A":{"desc":"Well Installation - 2 inch diameter (vertical)","unit":"FOOT"},"5-3.A":{"desc":"Well Installation - 4 inch diameter (vertical)","unit":"FOOT"},"5-6":{"desc":"Surface Casing - 6 inch diameter","unit":"FOOT"},"5-17":{"desc":"Prepacked Screen","unit":"FOOT"},"22-1":{"desc":"QUOTE - Costs for the installation of the 4-inch surface casing - ESTIMATED COST based on 5-6","unit":"FOOT"}};
+    let SELECTED_CID = "";
+    function normalizePayItem(codeRaw) {
+      if (!codeRaw) return "";
+      let s = String(codeRaw).trim();
+      s = s.replace(/\s+/g, "");
+      s = s.replace(/\.+$/g, "");
+      return s.toUpperCase();
+    }
+    function money(n) {
+      if (n === null || n === undefined || isNaN(n)) return "—";
+      return "$" + Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function getPayItemDesc(code, fallback) {
+      const k = normalizePayItem(code);
+      return PAY_ITEM_META[k]?.desc || fallback || String(code);
+    }
+    function populateAtcDropdown() {
+      const sel = document.getElementById("atcSelect");
+      const hint = document.getElementById("atcHint");
+      const entries = Object.entries(ATC_DATA)
+        .map(([cid, obj]) => ({ cid, name: obj.name || "" }))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+      sel.innerHTML = '<option value="">Select an ATC…</option>';
+      for (const it of entries) {
+        sel.insertAdjacentHTML("beforeend", `<option value="${it.cid}">${it.cid} - ${it.name}</option>`);
+      }
+      if (entries.length > 0) {
+        SELECTED_CID = entries[0].cid;
+        sel.value = SELECTED_CID;
+        hint.textContent = `Selected: ${SELECTED_CID} - ${ATC_DATA[SELECTED_CID].name}`;
+      }
+      sel.addEventListener("change", () => {
+        SELECTED_CID = sel.value || "";
+        hint.textContent = SELECTED_CID ? `Selected: ${SELECTED_CID} - ${ATC_DATA[SELECTED_CID]?.name || ""}` : "";
+      });
+    }
+    function getRateForSelected(payItemCode) {
+      const cid = SELECTED_CID;
+      if (!cid || !ATC_DATA[cid]) return null;
+      let key = normalizePayItem(payItemCode);
+      if (key === '22-1') key = '5-6'; 
+      return ATC_DATA[cid].rates?.[key] ?? null;
+    }
+    function toggleSC(el) {
+      const rows = document.querySelectorAll('.well-row');
+      const triggeringRow = el.closest('.well-row');
+      const triggeringIndex = parseInt(triggeringRow.dataset.index);
+      const rigSelects = document.querySelectorAll('.rig');
+      if (el.classList.contains('rig')) {
+        const newValue = el.value;
+        if (newValue === 'COMPARE' || newValue === 'DPT_DAILY') {
+          rigSelects.forEach(sel => sel.value = newValue);
+        } else if (triggeringIndex === 0) {
+          const othersAreGlobal = Array.from(rigSelects).slice(1).some(s => s.value === 'COMPARE' || s.value === 'DPT_DAILY');
+          if (othersAreGlobal && (newValue === 'HSA' || newValue === 'Sonic')) {
+            rigSelects.forEach(sel => sel.value = newValue);
+          }
         }
-        function addRow() {
-            const container = document.getElementById('inputRows');
-            const rows = container.querySelectorAll('.well-row');
-            const nextIndex = rows.length;
-            
-            const firstRowRig = document.querySelector('.rig').value;
-            const initialRigValue = (firstRowRig === 'COMPARE') ? 'COMPARE' : 'HSA';
-            const newRow = document.createElement('div');
-            newRow.className = 'well-row grid grid-cols-7 gap-2 items-center';
-            newRow.setAttribute('data-index', nextIndex);
-            
-            newRow.innerHTML = `
-                <input type="number" class="qty col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-blue-50 font-bold text-blue-800" value="0" min="0" oninput="toggleSC(this)">
-                <select class="rig col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)">
-                    <option value="HSA" ${initialRigValue === 'HSA' ? 'selected' : ''}>HSA</option>
-                    <option value="Sonic" ${initialRigValue === 'Sonic' ? 'selected' : ''}>Sonic</option>
-                    <option value="COMPARE" ${initialRigValue === 'COMPARE' ? 'selected' : ''}>Compare</option>
-                </select>
-                <select class="type col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)">
-                    <option value="SB">SB</option>
-                    <option value="MW">MW</option>
-                    <option value="DW" selected>DW</option>
-                </select>
-                <select class="diam col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50">
-                    <option value="NA" disabled hidden>N/A</option>
-                    <option value="2">2-inch</option>
-                    <option value="4">4-inch</option>
-                </select>
-                <input type="number" class="td col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="ft">
-                <input type="text" class="sc col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="Surface Casing Depth ft">
-                <select class="ss col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50">
-                    <option value="NONE" selected>None</option>
-                    <option value="OVA">Contingent on highest OVA</option>
-                    <option value="2FT">Each 2 ft interval</option>
-                </select>
-            `;
-            
-            container.appendChild(newRow);
-            toggleSC(newRow.querySelector('.qty'));
-        }
-        document.addEventListener('DOMContentLoaded', () => {
-            document.querySelectorAll('.well-row').forEach(row => {
-                toggleSC(row.querySelector('.qty'));
-            });
+      }
+      const firstRowRig = rigSelects[0].value;
+      const isGlobalMode = firstRowRig === 'COMPARE' || firstRowRig === 'DPT_DAILY';
+      rows.forEach(currentRow => {
+        const idx = parseInt(currentRow.dataset.index);
+        const qtyVal = parseInt(currentRow.querySelector('.qty').value) || 0;
+        const rigSelect = currentRow.querySelector('.rig');
+        const typeSelect = currentRow.querySelector('.type');
+        const tdInput = currentRow.querySelector('.td');
+        const scInput = currentRow.querySelector('.sc');
+        const ssSelect = currentRow.querySelector('.ss');
+        [rigSelect, typeSelect, tdInput, scInput, ssSelect].forEach(item => {
+          item.disabled = false;
+          item.style.opacity = '1';
         });
-        function resetForm() {
-            const container = document.getElementById('inputRows');
-            const initialRowCount = 3;
-            const rows = container.querySelectorAll('.well-row');
-            for (let i = rows.length - 1; i >= initialRowCount; i--) {
-                rows[i].remove();
+        if (isGlobalMode && idx > 0) { rigSelect.disabled = true; rigSelect.style.opacity = '0.3'; }
+        if (qtyVal === 0) {
+          [rigSelect, typeSelect, tdInput, scInput, ssSelect].forEach(item => {
+            item.disabled = true;
+            item.style.opacity = '0.3';
+          });
+        } else {
+          const typeVal = typeSelect.value;
+          if (typeVal === 'MW' || typeVal === 'SB') {
+            scInput.disabled = true; scInput.type = 'text'; scInput.value = 'N/A'; scInput.style.opacity = '0.3';
+          } else {
+            scInput.disabled = false; scInput.type = 'number';
+            if (scInput.value === 'N/A') scInput.value = '';
+          }
+          
+          ssSelect.disabled = false;
+          ssSelect.style.opacity = '1';
+        }
+      });
+    }
+    function addRow() {
+      const container = document.getElementById('inputRows');
+      const rows = container.querySelectorAll('.well-row');
+      const nextIndex = rows.length;
+      const firstRowRig = document.querySelector('.rig').value;
+      const initialRigValue = (firstRowRig === 'COMPARE' || firstRowRig === 'DPT_DAILY') ? firstRowRig : 'HSA';
+      const newRow = document.createElement('div');
+      newRow.className = 'well-row grid grid-cols-6 gap-2 items-center';
+      newRow.setAttribute('data-index', nextIndex);
+      newRow.innerHTML = `
+        <input type="number" class="qty col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-blue-50 font-bold text-blue-800" value="0" min="0" oninput="toggleSC(this)">
+        <select class="rig col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)">
+          <option value="HSA" ${initialRigValue === 'HSA' ? 'selected' : ''}>HSA</option>
+          <option value="Sonic" ${initialRigValue === 'Sonic' ? 'selected' : ''}>Sonic</option>
+          <option value="DPT_DAILY" ${initialRigValue === 'DPT_DAILY' ? 'selected' : ''}>DPT Daily Rate</option>
+          <option value="COMPARE" ${initialRigValue === 'COMPARE' ? 'selected' : ''}>Compare</option>
+        </select>
+        <select class="type col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)">
+          <option value="SB">SB</option><option value="MW">MW</option><option value="DW" selected>DW</option>
+        </select>
+        <input type="number" class="td col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="ft">
+        <input type="text" class="sc col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="Surface Casing Depth ft">
+        <select class="ss col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50">
+          <option value="NONE" selected>None</option><option value="OVA">Contingent on highest OVA</option><option value="2FT">Each 2 ft interval</option>
+        </select>
+      `;
+      container.appendChild(newRow);
+      toggleSC(newRow.querySelector('.qty'));
+    }
+    function resetForm() {
+      const container = document.getElementById('inputRows');
+      const rows = container.querySelectorAll('.well-row');
+      for (let i = rows.length - 1; i >= 3; i--) rows[i].remove();
+      container.querySelectorAll('.well-row').forEach((row, idx) => {
+        row.querySelector('.qty').value = '0'; row.querySelector('.td').value = '';
+        const scInput = row.querySelector('.sc'); scInput.type = 'number'; scInput.value = '';
+        row.querySelector('.rig').value = 'DPT_DAILY';
+        const typeSelect = row.querySelector('.type');
+        if (idx === 0) typeSelect.value = 'MW'; else if (idx === 1) typeSelect.value = 'DW'; else if (idx === 2) typeSelect.value = 'SB';
+        row.querySelector('.ss').value = 'NONE';
+        toggleSC(row.querySelector('.qty'));
+      });
+      document.getElementById('results').classList.add('hidden');
+      document.getElementById('disclaimerBox').classList.add('hidden');
+    }
+    function getDepthCategory(depth) {
+      if (depth < 50) return 'A';
+      if (depth >= 50 && depth <= 100) return 'B';
+      return 'C';
+    }
+    function processRowMethod(qty, totalDepth, casingDepth, method, type, rowIdx, alertDiv) {
+      const results = [];
+      
+      if (method !== 'DPT_DAILY') {
+        if (type === 'SB') {
+          const cat = getDepthCategory(totalDepth);
+          const code = (method === 'HSA') ? (cat === 'A' ? '4-5' : (cat === 'B' ? '4-6' : '4-7')) : (cat === 'A' ? '4-14' : (cat === 'B' ? '4-15' : '4-16'));
+          results.push({ code, desc: getPayItemDesc(code), units: totalDepth * qty, unitType: 'ft' });
+        } else if (method === 'HSA') {
+          if (type === 'DW') {
+            const separation = (totalDepth - 5) - casingDepth;
+            if (separation < 3 && alertDiv) {
+              alertDiv.innerHTML += `<div class="bg-red-50 border-l-2 border-red-400 p-2 text-red-700 text-[10px] mb-1"><strong>ERR (Row ${rowIdx+1}):</strong> Separation ${separation.toFixed(1)}' < 3' min.</div>`;
             }
-            container.querySelectorAll('.well-row').forEach((row, idx) => {
-                row.querySelector('.qty').value = '0';
-                row.querySelector('.td').value = '';
-                const scInput = row.querySelector('.sc');
-                scInput.type = 'number';
-                scInput.value = '';
-                row.querySelector('.rig').value = 'HSA';
-                
-                const typeSelect = row.querySelector('.type');
-                if (idx === 0) typeSelect.value = 'MW';
-                else if (idx === 1) typeSelect.value = 'DW';
-                else if (idx === 2) typeSelect.value = 'SB';
-                row.querySelector('.diam').value = '2';
-                row.querySelector('.ss').value = 'NONE';
-            });
-            document.querySelectorAll('.well-row').forEach(row => {
-                toggleSC(row.querySelector('.qty'));
-            });
-            document.getElementById('results').classList.add('hidden');
-            document.getElementById('alerts').innerHTML = '';
-            document.getElementById('resultsTables').innerHTML = '';
-            document.getElementById('singleResult').innerHTML = '';
-        }
-        function getDepthCategory(depth) {
-            if (depth < 50) return 'A';
-            if (depth >= 50 && depth <= 100) return 'B';
-            return 'C';
-        }
-        function processRowMethod(qty, totalDepth, casingDepth, method, type, diam, ssOption, rowIndex, alertDiv) {
-            const results = [];
-            const wellInstDesc = `Well Installation – ${diam === '2' ? '2' : '4'} inch diameter (vertical)`;
-            if (type === 'SB') {
-                const cat = getDepthCategory(totalDepth);
-                let item, desc;
-                const suffix = cat === 'A' ? '< 50 foot total depth' : (cat === 'B' ? '50 to 100 foot total depth' : '> 100 foot total depth');
-                if (method === 'HSA') {
-                    item = cat === 'A' ? '4-5' : (cat === 'B' ? '4-6' : '4-7');
-                    desc = `HSA or MR Boring ≤ 6-inch diameter; ${suffix}`;
-                } else {
-                    item = cat === 'A' ? '4-14' : (cat === 'B' ? '4-15' : '4-16');
-                    desc = `Sonic Boring ≤ 6 inch diameter; ${suffix}`;
-                }
-                results.push({ code: item, desc: desc, units: totalDepth * qty, unitType: 'ft' });
-            } else if (method === 'HSA') {
-                if (type === 'DW') {
-                    const screenTop = totalDepth - 5;
-                    const separation = screenTop - casingDepth;
-                    if (separation < 3 && alertDiv) {
-                        alertDiv.innerHTML += `<div class="bg-red-50 border-l-2 border-red-400 p-2 text-red-700 text-[10px] mb-1">
-                            <strong>ERR (Row ${rowIndex+1}):</strong> HSA Separation ${separation.toFixed(1)}' < 3' min.
-                        </div>`;
-                    }
-                    const scCat = getDepthCategory(casingDepth);
-                    const scItem = scCat === 'A' ? '4-11' : '4-12';
-                    const scSuffix = scCat === 'A' ? '< 50 foot total depth' : '50 to 100 foot total depth';
-                    results.push({ code: scItem, desc: `HSA or MR Boring > 10 to 14 inch diameter; ${scSuffix}`, units: casingDepth * qty, unitType: 'ft' });
-                    const inCat = getDepthCategory(totalDepth);
-                    const inItem = inCat === 'A' ? '4-5' : (inCat === 'B' ? '4-6' : '4-7');
-                    const inSuffix = inCat === 'A' ? '< 50 foot total depth' : (inCat === 'B' ? '50 to 100 foot total depth' : '> 100 foot total depth');
-                    results.push({ code: inItem, desc: `HSA or MR Boring ≤ 6-inch diameter; ${inSuffix}`, units: totalDepth * qty, unitType: 'ft' });
-                    results.push({ code: diam === '2' ? '5-2.a' : '5-3.a', desc: wellInstDesc, units: totalDepth * qty, unitType: 'ft' });
-                    results.push({ code: '5-6', desc: 'Surface Casing – 6 inch diameter', units: casingDepth * qty, unitType: 'ft' });
-                } else {
-                    const cat = getDepthCategory(totalDepth);
-                    const item = cat === 'A' ? '4-8' : '4-9';
-                    const suffix = cat === 'A' ? '< 50 foot total depth' : (cat === 'B' ? '50 to 100 foot total depth' : '> 100 foot total depth');
-                    results.push({ code: item, desc: `HSA or MR Boring > 6 to 10 inch diameter; ${suffix}`, units: totalDepth * qty, unitType: 'ft' });
-                    results.push({ code: diam === '2' ? '5-2.a' : '5-3.a', desc: wellInstDesc, units: totalDepth * qty, unitType: 'ft' });
-                }
+            const scCat = getDepthCategory(casingDepth);
+            const scItem = scCat === 'A' ? '4-11' : '4-12';
+            results.push({ code: scItem, desc: getPayItemDesc(scItem), units: casingDepth * qty, unitType: 'ft' });
+            const inCat = getDepthCategory(totalDepth);
+            const inItem = inCat === 'A' ? '4-5' : (inCat === 'B' ? '4-6' : '4-7');
+            results.push({ code: inItem, desc: getPayItemDesc(inItem), units: totalDepth * qty, unitType: 'ft' });
+          } else {
+            const cat = getDepthCategory(totalDepth);
+            const item = cat === 'A' ? '4-8' : '4-9';
+            results.push({ code: item, desc: getPayItemDesc(item), units: totalDepth * qty, unitType: 'ft' });
+          }
+        } else if (method === 'Sonic') {
+          const cat = getDepthCategory(totalDepth);
+          if (type === 'DW') {
+            const scCat = getDepthCategory(casingDepth);
+            if (scCat === cat) {
+              const code = (cat === 'A') ? '4-17' : (cat === 'B' ? '4-18' : '4-19');
+              results.push({ code, desc: getPayItemDesc(code), units: (casingDepth + totalDepth) * qty, unitType: 'ft' });
             } else {
-                if (type === 'DW') {
-                    const scCat = getDepthCategory(casingDepth);
-                    const tdCat = getDepthCategory(totalDepth);
-                    if (scCat === tdCat) {
-                        const code = scCat === 'A' ? '4-17' : (scCat === 'B' ? '4-18' : '4-19');
-                        const suffix = scCat === 'A' ? '< 50 foot total depth' : (scCat === 'B' ? '50 to 100 foot total depth' : '> 100 foot total depth');
-                        results.push({ code: code, desc: `Sonic Boring > 6 inch to 10 inches diameter; ${suffix}`, units: (casingDepth + totalDepth) * qty, unitType: 'ft' });
-                    } else {
-                        const codeC = scCat === 'A' ? '4-17' : (scCat === 'B' ? '4-18' : '4-19');
-                        const suffixC = scCat === 'A' ? '< 50 foot total depth' : (scCat === 'B' ? '50 to 100 foot total depth' : '> 100 foot total depth');
-                        results.push({ code: codeC, desc: `Sonic Boring > 6 inch to 10 inches diameter; ${suffixC}`, units: casingDepth * qty, unitType: 'ft' });
-                        const codeW = tdCat === 'A' ? '4-17' : (tdCat === 'B' ? '4-18' : '4-19');
-                        const suffixW = tdCat === 'A' ? '< 50 foot total depth' : (tdCat === 'B' ? '50 to 100 foot total depth' : '> 100 foot total depth');
-                        results.push({ code: codeW, desc: `Sonic Boring > 6 inch to 10 inches diameter; ${suffixW}`, units: totalDepth * qty, unitType: 'ft' });
-                    }
-                    results.push({ code: diam === '2' ? '5-2.a' : '5-3.a', desc: wellInstDesc, units: totalDepth * qty, unitType: 'ft' });
-                } else {
-                    const cat = getDepthCategory(totalDepth);
-                    const code = cat === 'A' ? '4-17' : (cat === 'B' ? '4-18' : '4-19');
-                    const suffix = cat === 'A' ? '< 50 foot total depth' : (cat === 'B' ? '50 to 100 foot total depth' : '> 100 foot total depth');
-                    results.push({ code: code, desc: `Sonic Boring > 6 inch to 10 inches diameter; ${suffix}`, units: totalDepth * qty, unitType: 'ft' });
-                    results.push({ code: diam === '2' ? '5-2.a' : '5-3.a', desc: wellInstDesc, units: totalDepth * qty, unitType: 'ft' });
-                }
+              const scCode = (scCat === 'A') ? '4-17' : (scCat === 'B' ? '4-18' : '4-19');
+              const tdCode = (cat === 'A') ? '4-17' : (cat === 'B' ? '4-18' : '4-19');
+              results.push({ code: scCode, desc: getPayItemDesc(scCode), units: casingDepth * qty, unitType: 'ft' });
+              results.push({ code: tdCode, desc: getPayItemDesc(tdCode), units: totalDepth * qty, unitType: 'ft' });
             }
-            if (ssOption === 'OVA' || ssOption === '2FT') {
-                if (method === 'HSA') {
-                    const cat = getDepthCategory(totalDepth);
-                    let ssCode, ssDesc;
-                    if (cat === 'A') { ssCode = '4-1.a'; ssDesc = 'Split Spoon Sampling – 2 foot (during boring) < 50 feet'; }
-                    else if (cat === 'B') { ssCode = '4-1.b'; ssDesc = 'Split Spoon Sampling – 2 foot (during boring) 50 to 100 feet'; }
-                    else { ssCode = '4-1.c'; ssDesc = 'Split Spoon Sampling – 2 foot (during boring) > 100 feet'; }
-                    let ssUnits = (ssOption === 'OVA') ? (1 * qty) : (Math.round(totalDepth / 2) * qty);
-                    results.push({ code: ssCode, desc: ssDesc, units: ssUnits, unitType: 'Split Spoon(s)' });
-                } else {
-                    const ssCode = '4-1.d';
-                    const ssDesc = 'Sonic Core Sampling – 5 or 10 foot (during boring)';
-                    let ssUnits = (ssOption === 'OVA') ? (1 * qty) : (Math.ceil(totalDepth / 10) * qty);
-                    results.push({ code: ssCode, desc: ssDesc, units: ssUnits, unitType: 'Sonic Core(s)' });
-                }
-            }
-            return results;
+          } else {
+            const code = (cat === 'A') ? '4-17' : (cat === 'B' ? '4-18' : '4-19');
+            results.push({ code, desc: getPayItemDesc(code), units: totalDepth * qty, unitType: 'ft' });
+          }
         }
-        function renderTable(container, title, itemsMap) {
-            const sortedItems = Object.values(itemsMap).sort((a, b) => {
-                const getParts = (c) => c.split(/[-.]/).map(p => isNaN(parseInt(p)) ? p : parseInt(p));
-                const aP = getParts(a.code); const bP = getParts(b.code);
-                for (let i = 0; i < Math.max(aP.length, bP.length); i++) {
-                    if (aP[i] === undefined) return -1; if (bP[i] === undefined) return 1;
-                    if (aP[i] !== bP[i]) return (typeof aP[i] === 'number' && typeof bP[i] === 'number') ? aP[i] - bP[i] : String(aP[i]).localeCompare(bP[i]);
-                }
-                return 0;
-            });
-            let html = `
-                <div class="border border-gray-200 rounded-lg overflow-hidden shadow-sm bg-white">
-                    <div class="bg-gray-50 border-b border-gray-200 px-4 py-2">
-                        <h2 class="text-xs font-black text-slate-700 uppercase tracking-widest">${title}</h2>
-                    </div>
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-3 py-2 text-[9px] font-bold text-gray-400 uppercase text-left">Item</th>
-                                <th class="px-3 py-2 text-[9px] font-bold text-gray-400 uppercase text-left">Description</th>
-                                <th class="px-3 py-2 text-[9px] font-bold text-gray-400 uppercase text-right">Qty</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200 text-[10px] text-gray-600">`;
-            
-            sortedItems.forEach(item => {
-                html += `
-                    <tr class="pay-item-row hover:bg-blue-50/30 transition-colors">
-                        <td class="px-3 py-1.5 font-mono font-bold text-blue-600">${item.code}</td>
-                        <td class="px-3 py-1.5 leading-tight">${item.desc}</td>
-                        <td class="px-3 py-1.5 text-right font-bold text-slate-800">${item.units.toFixed(0)} ${item.unitType}</td>
-                    </tr>`;
-            });
-            html += `</tbody></table></div>`;
-            container.innerHTML += html;
+      }
+      if (type !== 'SB') {
+        if (method === 'DPT_DAILY' && type === 'DW') {
+          results.push({ code: '5-1', desc: getPayItemDesc('5-1'), units: (totalDepth - 5) * qty, unitType: 'ft' });
+          results.push({ code: '5-17', desc: getPayItemDesc('5-17'), units: 5 * qty, unitType: 'ft' });
+          results.push({ code: '22-1', desc: getPayItemDesc('22-1'), units: casingDepth * qty, unitType: 'ft' });
+        } else {
+          results.push({ code: '5-2.A', desc: getPayItemDesc('5-2.A'), units: totalDepth * qty, unitType: 'ft' });
+          if (type === 'DW' && method !== 'Sonic') {
+            results.push({ code: '5-6', desc: getPayItemDesc('5-6'), units: casingDepth * qty, unitType: 'ft' });
+          }
         }
-        function calculate() {
-            const rows = document.querySelectorAll('.well-row');
-            const alertDiv = document.getElementById('alerts');
-            const resultsTables = document.getElementById('resultsTables');
-            const singleResult = document.getElementById('singleResult');
-            
-            const hsaMap = {};
-            const sonicMap = {};
-            let isCompareMode = false;
-            let hasValidInput = false;
-            alertDiv.innerHTML = '';
-            resultsTables.innerHTML = '';
-            singleResult.innerHTML = '';
-            const mobItem = { code: '3-5', desc: 'Drill Rig and Support Vehicles Mobilization (hollow stem auger, mud rotary or sonic)', units: 1, unitType: 'Unit' };
-            rows.forEach(row => {
-                const qty = parseInt(row.querySelector('.qty').value) || 0;
-                const totalDepth = parseFloat(row.querySelector('.td').value);
-                const casingInput = row.querySelector('.sc');
-                const casingDepth = (casingInput.disabled || casingInput.value === 'N/A') ? 0 : (parseFloat(casingInput.value) || 0);
-                const rig = row.querySelector('.rig').value;
-                const type = row.querySelector('.type').value;
-                const diam = row.querySelector('.diam').value;
-                const ssOption = row.querySelector('.ss').value;
-                const rowIndex = parseInt(row.dataset.index);
-                if (qty <= 0 || isNaN(totalDepth)) return;
-                hasValidInput = true;
-                if (rig === 'COMPARE') isCompareMode = true;
-                if (rig === 'HSA' || rig === 'COMPARE') {
-                    const items = processRowMethod(qty, totalDepth, casingDepth, 'HSA', type, diam, ssOption, rowIndex, alertDiv);
-                    items.forEach(it => {
-                        if (!hsaMap[it.code]) hsaMap[it.code] = { ...it };
-                        else hsaMap[it.code].units += it.units;
-                    });
-                }
-                if (rig === 'Sonic' || rig === 'COMPARE') {
-                    const items = processRowMethod(qty, totalDepth, casingDepth, 'Sonic', type, diam, ssOption, rowIndex, alertDiv);
-                    items.forEach(it => {
-                        if (!sonicMap[it.code]) sonicMap[it.code] = { ...it };
-                        else sonicMap[it.code].units += it.units;
-                    });
-                }
-            });
-            if (!hasValidInput) return;
-            document.getElementById('results').classList.remove('hidden');
-            if (isCompareMode) {
-                if (Object.keys(hsaMap).length > 0) {
-                    hsaMap['3-5'] = { ...mobItem };
-                    renderTable(resultsTables, "HSA RIG METHOD", hsaMap);
-                }
-                if (Object.keys(sonicMap).length > 0) {
-                    sonicMap['3-5'] = { ...mobItem };
-                    renderTable(resultsTables, "SONIC RIG METHOD", sonicMap);
-                }
+      }
+      return results;
+    }
+    function calculate() {
+      const rows = document.querySelectorAll('.well-row');
+      const alertDiv = document.getElementById('alerts');
+      const resultsTables = document.getElementById('resultsTables');
+      const singleResult = document.getElementById('singleResult');
+      const discBox = document.getElementById('disclaimerBox');
+      const hsaMap = {}, sonicMap = {}, dptDailyMap = {};
+      let isCompare = false, isDPTDaily = false, hasInput = false;
+      let dptEffectiveDepth = 0, dptHasDw = false, dptHasWells = false, globalOnlySB = true;
+      alertDiv.innerHTML = ''; resultsTables.innerHTML = ''; singleResult.innerHTML = '';
+      discBox.classList.add('hidden');
+      rows.forEach(row => {
+        const qty = parseInt(row.querySelector('.qty').value) || 0;
+        const totalDepth = parseFloat(row.querySelector('.td').value);
+        if (qty <= 0 || isNaN(totalDepth)) return;
+        hasInput = true;
+        const rig = row.querySelector('.rig').value;
+        const type = row.querySelector('.type').value;
+        const ssOption = row.querySelector('.ss').value;
+        const casingIn = row.querySelector('.sc');
+        const casingDepth = (casingIn.disabled || casingIn.value === 'N/A') ? 0 : (parseFloat(casingIn.value) || 0);
+        const rowIndex = parseInt(row.dataset.index);
+        
+        if (type !== 'SB') globalOnlySB = false;
+        if (rig === 'COMPARE') isCompare = true;
+        if (rig === 'DPT_DAILY') isDPTDaily = true;
+        const processAndMap = (method, map) => {
+          processRowMethod(qty, totalDepth, casingDepth, method, type, rowIndex, alertDiv).forEach(it => {
+            if (!map[it.code]) map[it.code] = { ...it }; else map[it.code].units += it.units;
+          });
+          
+          if (ssOption !== 'NONE' && method !== 'DPT_DAILY') {
+            if (method === 'Sonic') {
+              const coreCode = '4-1.D';
+              const coreUnits = Math.ceil(totalDepth / 10) * qty;
+              const actualUnits = ssOption === 'OVA' ? 1 * qty : coreUnits;
+              if (!map[coreCode]) map[coreCode] = { code: coreCode, desc: getPayItemDesc(coreCode), units: actualUnits, unitType: 'Core(s)' };
+              else map[coreCode].units += actualUnits;
             } else {
-                const finalMap = (Object.keys(hsaMap).length > 0) ? hsaMap : sonicMap;
-                if (finalMap && Object.keys(finalMap).length > 0) {
-                    finalMap['3-5'] = { ...mobItem };
-                    renderTable(singleResult, "Pay Item Summary", finalMap);
-                }
+              const cat = getDepthCategory(totalDepth);
+              const ssCode = cat === 'A' ? '4-1.A' : (cat === 'B' ? '4-1.B' : '4-1.C');
+              const ssUnits = Math.round(totalDepth / 2) * qty;
+              const actualUnits = ssOption === 'OVA' ? 1 * qty : ssUnits;
+              if (!map[ssCode]) map[ssCode] = { code: ssCode, desc: getPayItemDesc(ssCode), units: actualUnits, unitType: 'Spoon(s)' };
+              else map[ssCode].units += actualUnits;
             }
+          }
+        };
+        if (rig === 'HSA' || rig === 'COMPARE') processAndMap('HSA', hsaMap);
+        if (rig === 'Sonic' || rig === 'COMPARE') processAndMap('Sonic', sonicMap);
+        if (rig === 'DPT_DAILY' || rig === 'COMPARE') {
+          if (type === 'SB') {
+            dptEffectiveDepth += (totalDepth * qty);
+          } else {
+            dptHasWells = true;
+            if (type === 'MW') {
+              dptEffectiveDepth += (35 * qty);
+            } else if (type === 'DW') {
+              dptEffectiveDepth += (70 * qty);
+              dptHasDw = true;
+            }
+          }
+          processAndMap('DPT_DAILY', dptDailyMap);
         }
-    </script>
+      });
+      if (!hasInput) return;
+      document.getElementById('results').classList.remove('hidden');
+      
+      const finalizeDPT = (map, effectiveDepth, hasDW) => {
+        let units4_3 = Math.ceil(effectiveDepth / 140);
+        if (hasDW && units4_3 < 2) units4_3 = 2;
+        
+        map['4-3'] = { code: '4-3', desc: getPayItemDesc('4-3'), units: units4_3, unitType: 'Day(s)' };
+        const mobCode = globalOnlySB ? '3-4' : '3-5';
+        map[mobCode] = { code: mobCode, desc: getPayItemDesc(mobCode), units: 1, unitType: 'Unit' };
+      };
+      if (isCompare) {
+        finalizeDPT(dptDailyMap, dptEffectiveDepth, dptHasDw);
+        renderTable(resultsTables, "DPT DAILY RATE METHOD", dptDailyMap, dptHasDw, dptHasWells);
+        if (Object.keys(hsaMap).length > 0) {
+          hsaMap['3-5'] = { code: '3-5', desc: getPayItemDesc('3-5'), units: 1, unitType: 'Unit' };
+          renderTable(resultsTables, "HSA RIG METHOD", hsaMap, false, false);
+        }
+        if (Object.keys(sonicMap).length > 0) {
+          sonicMap['3-5'] = { code: '3-5', desc: getPayItemDesc('3-5'), units: 1, unitType: 'Unit' };
+          renderTable(resultsTables, "SONIC RIG METHOD", sonicMap, false, false);
+        }
+        if (globalOnlySB) discBox.classList.remove('hidden');
+      } else if (isDPTDaily) {
+        finalizeDPT(dptDailyMap, dptEffectiveDepth, dptHasDw);
+        if (globalOnlySB) discBox.classList.remove('hidden');
+        renderTable(singleResult, "DPT Daily Rate Summary", dptDailyMap, dptHasDw, dptHasWells);
+      } else {
+        const final = (Object.keys(hsaMap).length > 0) ? hsaMap : sonicMap;
+        if (final) {
+          final['3-5'] = { code: '3-5', desc: getPayItemDesc('3-5'), units: 1, unitType: 'Unit' };
+          renderTable(singleResult, "Pay Item Summary", final, false, false);
+        }
+      }
+    }
+    function renderTable(container, title, itemsMap, hasDptDw, showWellRateNote) {
+      const sorted = Object.values(itemsMap).sort((a, b) => {
+        const getParts = (c) => normalizePayItem(c).split(/[-.]/).map(p => isNaN(parseInt(p)) ? p : parseInt(p));
+        const aP = getParts(a.code), bP = getParts(b.code);
+        for (let i = 0; i < Math.max(aP.length, bP.length); i++) {
+          if (aP[i] === undefined) return -1; if (bP[i] === undefined) return 1;
+          if (aP[i] !== bP[i]) return (typeof aP[i] === 'number' && typeof bP[i] === 'number') ? aP[i] - bP[i] : String(aP[i]).localeCompare(bP[i]);
+        }
+        return 0;
+      });
+      const cid = SELECTED_CID;
+      const atcName = cid && ATC_DATA[cid] ? ATC_DATA[cid].name : "";
+      let totalExt = 0;
+      let html = `<div class="border border-gray-200 rounded-lg overflow-hidden shadow-sm bg-white mb-4">
+          <div class="bg-gray-50 border-b border-gray-200 px-4 py-2">
+            <h2 class="text-xs font-black text-slate-700 uppercase tracking-widest">${title}</h2>
+            <div class="text-[10px] text-gray-500 mt-1">${cid ? `ATC: <span class="font-bold">${cid}</span> - ${atcName}` : `<span class="italic">Select an ATC to show pricing.</span>`}</div>
+          </div>
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr class="text-[9px] font-bold text-gray-400 uppercase">
+                <th class="px-3 py-2 text-left">Item</th>
+                <th class="px-3 py-2 text-left">Description</th>
+                <th class="px-3 py-2 text-right">Qty</th>
+                <th class="px-3 py-2 text-right">Rate</th>
+                <th class="px-3 py-2 text-right">Ext</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 text-[10px] text-gray-600">`;
+      sorted.forEach(item => {
+        const qty = Number(item.units);
+        const rate = getRateForSelected(item.code);
+        const ext = (rate === null) ? null : (qty * Number(rate));
+        if (ext !== null) totalExt += ext;
+        html += `<tr class="pay-item-row hover:bg-blue-50/30 transition-colors">
+            <td class="px-3 py-1.5 font-mono font-bold text-blue-600">${item.code}</td>
+            <td class="px-3 py-1.5 leading-tight">${item.desc}</td>
+            <td class="px-3 py-1.5 text-right font-bold text-slate-800">${qty.toFixed(0)} <span class="text-[8px] font-normal text-gray-400 uppercase">${item.unitType}</span></td>
+            <td class="px-3 py-1.5 text-right font-bold text-slate-800">${money(rate)}</td>
+            <td class="px-3 py-1.5 text-right font-bold text-slate-800">${money(ext)}</td>
+          </tr>`;
+      });
+      html += `</tbody><tfoot class="bg-gray-50 border-t border-gray-200"><tr>
+          <td colspan="4" class="px-3 py-2 text-right text-[10px] font-bold text-gray-500 uppercase">Total</td>
+          <td class="px-3 py-2 text-right text-[10px] font-black text-slate-800">${cid ? money(totalExt) : "—"}</td>
+        </tr></tfoot></table>`;
+      
+      if (title.includes("DPT") && (showWellRateNote || hasDptDw)) {
+        html += `<div class="p-3 bg-gray-50 border-t border-gray-200 text-[10px] text-slate-700 leading-relaxed italic">`;
+        if (showWellRateNote) {
+          html += `<p class="mb-1">* During a standard 10-hour workday, approximately four shallow monitoring wells can typically be installed using a combo rig, based on the generally shallow depth to groundwater conditions in Miami-Dade County. </p>`;
+        }
+        if (hasDptDw) {
+          html += `<p>** DPT deep wells are typically 1-inch in diameter. This also requires prepacked well screen. The surface casing is 4-inches in diameter which is obtained via quote. The quote above uses the same cost as the 5-6 pay item as an estimate.</p>`;
+        }
+        html += `</div>`;
+      }
+      html += `</div>`;
+      container.innerHTML += html;
+    }
+    document.addEventListener('DOMContentLoaded', () => { populateAtcDropdown(); document.querySelectorAll('.well-row').forEach(row => toggleSC(row.querySelector('.qty'))); });
+  </script>
 </body>
 </html>
