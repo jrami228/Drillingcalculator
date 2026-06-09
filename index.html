@@ -1,3 +1,4 @@
+
 <!DOCTYPE html> 
 <html lang="en">
 <head>
@@ -78,12 +79,13 @@
             <option value="MW" selected>MW (Shallow)</option>
             <option value="DW">DW (Deep)</option>
           </select>
-          <input type="number" class="td col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="ft">
+          <input type="number" class="td col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="ft" oninput="updateSpoonLabel(this)">
           <input type="text" class="sc col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="Surface Casing Depth ft">
           <select class="ss col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50">
             <option value="NONE" selected>None</option>
+            <option value="PER_SB">01 Spoon/Sonic Core per SB</option>
             <option value="OVA">Contingent on highest OVA</option>
-            <option value="2FT">Each 2 ft interval</option>
+            <option value="2FT">Each 2 ft interval (0-X@2)</option>
           </select>
         </div>
         <!-- Row 1: Default DW -->
@@ -95,10 +97,10 @@
           <select class="type col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)">
             <option value="SB">SB</option><option value="MW">MW</option><option value="DW" selected>DW</option>
           </select>
-          <input type="number" class="td col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="ft">
+          <input type="number" class="td col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="ft" oninput="updateSpoonLabel(this)">
           <input type="text" class="sc col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="Surface Casing Depth ft">
           <select class="ss col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50">
-            <option value="NONE" selected>None</option><option value="OVA">Contingent on highest OVA</option><option value="2FT">Each 2 ft interval</option>
+            <option value="NONE" selected>None</option><option value="PER_SB">01 Spoon/Sonic Core per SB</option><option value="OVA">Contingent on highest OVA</option><option value="2FT">Each 2 ft interval (0-X@2)</option>
           </select>
         </div>
         <!-- Row 2: Default SB -->
@@ -110,10 +112,10 @@
           <select class="type col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)">
             <option value="SB" selected>SB</option><option value="MW">MW</option><option value="DW">DW</option>
           </select>
-          <input type="number" class="td col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="ft">
+          <input type="number" class="td col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="ft" oninput="updateSpoonLabel(this)">
           <input type="text" class="sc col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="Surface Casing Depth ft">
           <select class="ss col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50">
-            <option value="NONE" selected>None</option><option value="OVA">Contingent on highest OVA</option><option value="2FT">Each 2 ft interval</option>
+            <option value="NONE" selected>None</option><option value="PER_SB">01 Spoon/Sonic Core per SB</option><option value="OVA">Contingent on highest OVA</option><option value="2FT">Each 2 ft interval (0-X@2)</option>
           </select>
         </div>
       </div>
@@ -251,6 +253,14 @@
         }
       });
     }
+    function updateSpoonLabel(el) {
+      const row = el.closest('.well-row');
+      if (!row) return;
+      const tdVal = row.querySelector('.td').value;
+      const depth = (tdVal === '' || isNaN(parseFloat(tdVal))) ? 'X' : parseFloat(tdVal);
+      const opt2ft = row.querySelector('.ss option[value="2FT"]');
+      if (opt2ft) opt2ft.textContent = `Each 2 ft interval (0-${depth}@2)`;
+    }
     function addRow() {
       const container = document.getElementById('inputRows');
       const rows = container.querySelectorAll('.well-row');
@@ -271,14 +281,15 @@
         <select class="type col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50" onchange="toggleSC(this)">
           <option value="SB">SB</option><option value="MW">MW</option><option value="DW" selected>DW</option>
         </select>
-        <input type="number" class="td col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="ft">
+        <input type="number" class="td col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="ft" oninput="updateSpoonLabel(this)">
         <input type="text" class="sc col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none" placeholder="Surface Casing Depth ft">
         <select class="ss col-span-1 w-full p-1 text-xs border border-gray-300 rounded outline-none bg-gray-50">
-          <option value="NONE" selected>None</option><option value="OVA">Contingent on highest OVA</option><option value="2FT">Each 2 ft interval</option>
+          <option value="NONE" selected>None</option><option value="PER_SB">01 Spoon/Sonic Core per SB</option><option value="OVA">Contingent on highest OVA</option><option value="2FT">Each 2 ft interval (0-X@2)</option>
         </select>
       `;
       container.appendChild(newRow);
       toggleSC(newRow.querySelector('.qty'));
+      updateSpoonLabel(newRow.querySelector('.td'));
     }
     function resetForm() {
       const container = document.getElementById('inputRows');
@@ -292,6 +303,7 @@
         if (idx === 0) typeSelect.value = 'MW'; else if (idx === 1) typeSelect.value = 'DW'; else if (idx === 2) typeSelect.value = 'SB';
         row.querySelector('.ss').value = 'NONE';
         toggleSC(row.querySelector('.qty'));
+        updateSpoonLabel(row.querySelector('.td'));
       });
       document.getElementById('results').classList.add('hidden');
       document.getElementById('disclaimerBox').classList.add('hidden');
@@ -394,14 +406,14 @@
             if (method === 'Sonic') {
               const coreCode = '4-1.D';
               const coreUnits = Math.ceil(totalDepth / 10) * qty;
-              const actualUnits = ssOption === 'OVA' ? 1 * qty : coreUnits;
+              const actualUnits = (ssOption === 'OVA' || ssOption === 'PER_SB') ? 1 * qty : coreUnits;
               if (!map[coreCode]) map[coreCode] = { code: coreCode, desc: getPayItemDesc(coreCode), units: actualUnits, unitType: 'Core(s)' };
               else map[coreCode].units += actualUnits;
             } else {
               const cat = getDepthCategory(totalDepth);
               const ssCode = cat === 'A' ? '4-1.A' : (cat === 'B' ? '4-1.B' : '4-1.C');
               const ssUnits = Math.round(totalDepth / 2) * qty;
-              const actualUnits = ssOption === 'OVA' ? 1 * qty : ssUnits;
+              const actualUnits = (ssOption === 'OVA' || ssOption === 'PER_SB') ? 1 * qty : ssUnits;
               if (!map[ssCode]) map[ssCode] = { code: ssCode, desc: getPayItemDesc(ssCode), units: actualUnits, unitType: 'Spoon(s)' };
               else map[ssCode].units += actualUnits;
             }
@@ -519,7 +531,7 @@
       html += `</div>`;
       container.innerHTML += html;
     }
-    document.addEventListener('DOMContentLoaded', () => { populateAtcDropdown(); document.querySelectorAll('.well-row').forEach(row => toggleSC(row.querySelector('.qty'))); });
+    document.addEventListener('DOMContentLoaded', () => { populateAtcDropdown(); document.querySelectorAll('.well-row').forEach(row => { toggleSC(row.querySelector('.qty')); updateSpoonLabel(row.querySelector('.td')); }); });
   </script>
 </body>
 </html>
