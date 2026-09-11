@@ -8,7 +8,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FDEP Well Billing Calculator (ITN 2024019)</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.4/jspdf.plugin.autotable.min.js"></script>
   <style>
     body {
       background-color: #f3f4f6;
@@ -781,32 +782,352 @@
       a.click();
       setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
     }
+    function escapeHtml(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+    function reportRowLabel(row) {
+      const typeSel = row.querySelector(".type");
+      const rigSel = row.querySelector(".rig");
+      const ssSel = row.querySelector(".ss");
+      const typeText = typeSel.options[typeSel.selectedIndex] ? typeSel.options[typeSel.selectedIndex].text : typeSel.value;
+      const rigText = rigSel.options[rigSel.selectedIndex] ? rigSel.options[rigSel.selectedIndex].text : rigSel.value;
+      const ssText = ssSel.options[ssSel.selectedIndex] ? ssSel.options[ssSel.selectedIndex].text : ssSel.value;
+      return { typeText, rigText, ssText };
+    }
+    function sortedPayItems(map) {
+      return Object.values(map || {}).sort((a, b) => {
+        const getParts = (c) => normalizePayItem(c).split(/[-.]/).map(p => isNaN(parseInt(p)) ? p : parseInt(p));
+        const aP = getParts(a.code), bP = getParts(b.code);
+        for (let i = 0; i < Math.max(aP.length, bP.length); i++) {
+          if (aP[i] === undefined) return -1; if (bP[i] === undefined) return 1;
+          if (aP[i] !== bP[i]) return (typeof aP[i] === "number" && typeof bP[i] === "number") ? aP[i] - bP[i] : String(aP[i]).localeCompare(bP[i]);
+        }
+        return 0;
+      });
+    }
+    function buildPdfReportElement() {
+      const resultsHidden = document.getElementById("results")?.classList.contains("hidden");
+      const hasQty = Array.from(document.querySelectorAll(".well-row")).some(r => (parseInt(r.querySelector(".qty").value, 10) || 0) > 0);
+      if (hasQty && resultsHidden) calculate();
+
+      const cid = SELECTED_CID;
+      const atcName = cid && ATC_DATA[cid] ? ATC_DATA[cid].name : "No ATC selected";
+      const exported = new Date().toLocaleString();
+
+      const inputRows = [];
+      document.querySelectorAll(".well-row").forEach((row, i) => {
+        const qty = parseInt(row.querySelector(".qty").value, 10) || 0;
+        const td = row.querySelector(".td").value;
+        if (qty <= 0 && (td === "" || td == null)) return;
+        const labs = reportRowLabel(row);
+        inputRows.push({
+          n: i + 1,
+          qty,
+          rig: labs.rigText,
+          type: labs.typeText,
+          td: td === "" ? "—" : td,
+          sc: row.querySelector(".sc").value || "—",
+          ss: labs.ssText
+        });
+      });
+
+      const kinds = [
+        { key: "dpt", fallbackTitle: "DPT Daily Rate Method" },
+        { key: "hsa", fallbackTitle: "HSA Rig Method" },
+        { key: "sonic", fallbackTitle: "Sonic Rig Method" }
+      ];
+
+      let html = "";
+      html += `<div style="font-family:Arial,Helvetica,sans-serif;color:#111;font-size:11px;line-height:1.35;">`;
+      html += `<div style="border-bottom:2px solid #1e293b;padding-bottom:8px;margin-bottom:14px;">`;
+      html += `<div style="font-size:16px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#0f172a;">Pay Item Session</div>`;
+      html += `<div style="margin-top:4px;font-size:12px;"><strong>ATC:</strong> ${escapeHtml(cid || "—")} — ${escapeHtml(atcName)}</div>`;
+      html += `<div style="font-size:11px;color:#475569;">Exported ${escapeHtml(exported)}</div>`;
+      html += `</div>`;
+
+      html += `<div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px;color:#0f172a;">Inputs</div>`;
+      html += `<table style="width:100%;border-collapse:collapse;margin-bottom:14px;">`;
+      html += `<thead><tr>`;
+      ["#","Qty","Rig","Type","Depth (ft)","Surface casing","Spoons / cores"].forEach(h => {
+        html += `<th style="text-align:left;background:#f1f5f9;border:1px solid #cbd5e1;padding:6px 7px;font-size:9px;letter-spacing:.04em;text-transform:uppercase;color:#64748b;">${h}</th>`;
+      });
+      html += `</tr></thead><tbody>`;
+      if (!inputRows.length) {
+        html += `<tr><td colspan="7" style="border:1px solid #cbd5e1;padding:8px;color:#64748b;">No well rows with quantity or depth.</td></tr>`;
+      } else {
+        inputRows.forEach(r => {
+          html += `<tr>`;
+          [r.n, r.qty, r.rig, r.type, r.td, r.sc, r.ss].forEach((v, idx) => {
+            const align = idx <= 1 ? "text-align:right;" : "text-align:left;";
+            html += `<td style="border:1px solid #cbd5e1;padding:6px 7px;${align}">${escapeHtml(v)}</td>`;
+          });
+          html += `</tr>`;
+        });
+      }
+      html += `</tbody></table>`;
+
+      html += `<div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px;color:#0f172a;">Options</div>`;
+      html += `<table style="width:100%;border-collapse:collapse;margin-bottom:16px;">`;
+      const optRows = [
+        ["HSA hand auger borings (4-2)", TABLE_OPTIONS.hsaHandAuger || 0],
+        ["Sonic hand auger borings (4-2)", TABLE_OPTIONS.sonicHandAuger || 0],
+        ["DPT well install", TABLE_OPTIONS.dptUse15 ? "5-4  1.5-inch (switched from 5-2.A)" : "5-2.A  2-inch"]
+      ];
+      optRows.forEach(([k,v]) => {
+        html += `<tr><td style="border:1px solid #cbd5e1;padding:6px 7px;width:55%;background:#f8fafc;">${escapeHtml(k)}</td>`;
+        html += `<td style="border:1px solid #cbd5e1;padding:6px 7px;font-weight:700;">${escapeHtml(v)}</td></tr>`;
+      });
+      html += `</table>`;
+
+      const notes = [];
+      kinds.forEach(({ key, fallbackTitle }) => {
+        const cached = TABLE_CACHE[key];
+        if (!cached || !cached.baseMap || !Object.keys(cached.baseMap).length) return;
+        const map = applyTableOptions(key, cached.baseMap);
+        const items = sortedPayItems(map);
+        if (!items.length) return;
+        const title = cached.title || fallbackTitle;
+        let total = 0;
+        html += `<div style="page-break-inside:avoid;margin:0 0 16px;">`;
+        html += `<div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px;color:#0f172a;">${escapeHtml(title)}</div>`;
+        html += `<table style="width:100%;border-collapse:collapse;">`;
+        html += `<thead><tr>`;
+        ["Item","Description","Qty","Unit","Rate","Ext"].forEach((h, idx) => {
+          const align = idx >= 2 ? "text-align:right;" : "text-align:left;";
+          html += `<th style="${align}background:#f1f5f9;border:1px solid #cbd5e1;padding:6px 7px;font-size:9px;letter-spacing:.04em;text-transform:uppercase;color:#64748b;">${h}</th>`;
+        });
+        html += `</tr></thead><tbody>`;
+        items.forEach(item => {
+          const qty = Number(item.units);
+          const rate = getRateForSelected(item.code);
+          const ext = (rate == null) ? null : qty * Number(rate);
+          if (ext != null) total += ext;
+          const qtyStr = Number.isInteger(qty) ? String(qty) : qty.toFixed(2);
+          html += `<tr>`;
+          html += `<td style="border:1px solid #cbd5e1;padding:6px 7px;font-family:ui-monospace,Consolas,monospace;font-weight:700;color:#1d4ed8;white-space:nowrap;">${escapeHtml(item.code)}</td>`;
+          html += `<td style="border:1px solid #cbd5e1;padding:6px 7px;">${escapeHtml(item.desc)}</td>`;
+          html += `<td style="border:1px solid #cbd5e1;padding:6px 7px;text-align:right;font-weight:700;">${escapeHtml(qtyStr)}</td>`;
+          html += `<td style="border:1px solid #cbd5e1;padding:6px 7px;text-align:right;color:#64748b;text-transform:uppercase;font-size:9px;">${escapeHtml(item.unitType || "")}</td>`;
+          html += `<td style="border:1px solid #cbd5e1;padding:6px 7px;text-align:right;white-space:nowrap;">${money(rate)}</td>`;
+          html += `<td style="border:1px solid #cbd5e1;padding:6px 7px;text-align:right;font-weight:700;white-space:nowrap;">${money(ext)}</td>`;
+          html += `</tr>`;
+        });
+        html += `</tbody><tfoot><tr>`;
+        html += `<td colspan="5" style="border:1px solid #cbd5e1;padding:7px;text-align:right;background:#f8fafc;font-weight:700;text-transform:uppercase;font-size:10px;color:#475569;">Total</td>`;
+        html += `<td style="border:1px solid #cbd5e1;padding:7px;text-align:right;background:#f8fafc;font-weight:800;white-space:nowrap;">${cid ? money(total) : "—"}</td>`;
+        html += `</tr></tfoot></table></div>`;
+
+        if (key === "dpt" && cached.showWellRateNote) {
+          notes.push("During a standard 10-hour workday of combo rig drilling, around four shallow monitoring wells (15 ft depth) can typically be installed.");
+        }
+        if (key === "dpt" && cached.hasDptDw) {
+          notes.push("DPT deep wells are typically 1-inch in diameter and require prepacked well screen. Surface casing is 4-inch via quote; 22-1 is estimated from pay item 5-6.");
+        }
+      });
+
+      if (notes.length) {
+        html += `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #cbd5e1;color:#475569;font-size:10px;">`;
+        notes.forEach(n => { html += `<p style="margin:0 0 6px;">* ${escapeHtml(n)}</p>`; });
+        html += `</div>`;
+      }
+      html += `</div>`;
+
+      const el = document.createElement("div");
+      el.id = "pdfReportMount";
+      el.style.cssText = "position:fixed;left:-14000px;top:0;width:760px;background:#fff;padding:28px;box-sizing:border-box;";
+      el.innerHTML = html;
+      return el;
+    }
+    function getJsPdfCtor() {
+      if (window.jspdf && window.jspdf.jsPDF) return window.jspdf.jsPDF;
+      if (typeof window.jsPDF === "function") return window.jsPDF;
+      return null;
+    }
     async function exportSessionPdf() {
       persistAutosave();
       const filename = "Pay_Item_Session_" + sessionStamp() + ".pdf";
-      const area = document.querySelector(".max-w-7xl") || document.body;
-      const results = document.getElementById("results");
-      const title = document.querySelector(".app-title");
-      const wasHidden = results && results.classList.contains("hidden");
-      if (results) results.classList.remove("hidden");
-      if (title) title.style.display = "none";
-      try {
-        if (window.html2pdf) {
-          await window.html2pdf().set({
-            margin: [0.35, 0.35, 0.35, 0.35],
-            filename,
-            image: { type: "jpeg", quality: 0.96 },
-            html2canvas: { scale: 2, useCORS: true, logging: false, windowWidth: 1400 },
-            jsPDF: { unit: "in", format: "letter", orientation: "landscape" },
-            pagebreak: { mode: ["css", "legacy"], avoid: ["[data-table-kind]", "table"] }
-          }).from(area).save();
-        } else {
-          window.print();
-        }
-      } finally {
-        if (title) title.style.display = "";
-        if (results && wasHidden) results.classList.add("hidden");
+      const resultsHidden = document.getElementById("results")?.classList.contains("hidden");
+      const hasQty = Array.from(document.querySelectorAll(".well-row")).some(r => (parseInt(r.querySelector(".qty").value, 10) || 0) > 0);
+      if (hasQty && resultsHidden) calculate();
+
+      const JsPDF = getJsPdfCtor();
+      if (!JsPDF) {
+        const report = buildPdfReportElement();
+        report.style.left = "0";
+        report.style.top = "0";
+        report.style.zIndex = "99999";
+        document.body.appendChild(report);
+        const w = window.open("", "_blank", "noopener,noreferrer");
+        if (!w) { alert("PDF library failed to load and the print window was blocked."); report.remove(); return; }
+        w.document.write("<!DOCTYPE html><html><head><title>" + filename + "</title></head><body style='margin:24px;font-family:Arial,sans-serif'>" + report.innerHTML + "</body></html>");
+        w.document.close();
+        report.remove();
+        w.focus();
+        w.print();
+        return;
       }
+
+      const doc = new JsPDF({ unit: "pt", format: "letter", orientation: "portrait" });
+      const margin = 40;
+      const pageW = doc.internal.pageSize.getWidth();
+      const cid = SELECTED_CID;
+      const atcName = cid && ATC_DATA[cid] ? ATC_DATA[cid].name : "No ATC selected";
+      const exported = new Date().toLocaleString();
+
+      let y = 46;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.setTextColor(15, 23, 42);
+      doc.text("Pay Item Session", margin, y);
+      y += 18;
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text("ATC: " + (cid || "—") + "  —  " + atcName, margin, y);
+      y += 14;
+      doc.setTextColor(71, 85, 105);
+      doc.setFontSize(9);
+      doc.text("Exported " + exported, margin, y);
+      y += 10;
+      doc.setDrawColor(30, 41, 59);
+      doc.setLineWidth(1.2);
+      doc.line(margin, y, pageW - margin, y);
+      y += 16;
+
+      const inputBody = [];
+      document.querySelectorAll(".well-row").forEach((row, i) => {
+        const qty = parseInt(row.querySelector(".qty").value, 10) || 0;
+        const td = row.querySelector(".td").value;
+        if (qty <= 0 && (td === "" || td == null)) return;
+        const labs = reportRowLabel(row);
+        inputBody.push([
+          String(i + 1),
+          String(qty),
+          labs.rigText,
+          labs.typeText,
+          td === "" ? "—" : String(td),
+          row.querySelector(".sc").value || "—",
+          labs.ssText
+        ]);
+      });
+      if (!inputBody.length) inputBody.push(["—", "—", "—", "—", "—", "—", "No rows with quantity or depth"]);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42);
+      doc.text("Inputs", margin, y);
+      y += 6;
+      doc.autoTable({
+        startY: y,
+        head: [["#", "Qty", "Rig", "Type", "Depth (ft)", "Surface casing", "Spoons / cores"]],
+        body: inputBody,
+        theme: "grid",
+        styles: { font: "helvetica", fontSize: 8, cellPadding: 4, textColor: [15, 23, 42], lineColor: [203, 213, 225], lineWidth: 0.4, overflow: "linebreak" },
+        headStyles: { fillColor: [241, 245, 249], textColor: [71, 85, 105], fontStyle: "bold", fontSize: 7.5 },
+        columnStyles: { 0: { cellWidth: 22, halign: "right" }, 1: { cellWidth: 32, halign: "right" } },
+        margin: { left: margin, right: margin }
+      });
+      y = doc.lastAutoTable.finalY + 18;
+
+      const optBody = [
+        ["HSA hand auger borings (4-2)", String(TABLE_OPTIONS.hsaHandAuger || 0)],
+        ["Sonic hand auger borings (4-2)", String(TABLE_OPTIONS.sonicHandAuger || 0)],
+        ["DPT well install", TABLE_OPTIONS.dptUse15 ? "5-4  1.5-inch (switched from 5-2.A)" : "5-2.A  2-inch"]
+      ];
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(15, 23, 42);
+      doc.text("Options", margin, y);
+      y += 6;
+      doc.autoTable({
+        startY: y,
+        body: optBody,
+        theme: "grid",
+        styles: { font: "helvetica", fontSize: 8.5, cellPadding: 4, textColor: [15, 23, 42], lineColor: [203, 213, 225], lineWidth: 0.4 },
+        columnStyles: { 0: { cellWidth: 280, fillColor: [248, 250, 252] }, 1: { fontStyle: "bold" } },
+        margin: { left: margin, right: margin }
+      });
+      y = doc.lastAutoTable.finalY + 18;
+
+      const kinds = [
+        { key: "dpt", fallbackTitle: "DPT Daily Rate Method" },
+        { key: "hsa", fallbackTitle: "HSA Rig Method" },
+        { key: "sonic", fallbackTitle: "Sonic Rig Method" }
+      ];
+      const notes = [];
+      kinds.forEach(({ key, fallbackTitle }) => {
+        const cached = TABLE_CACHE[key];
+        if (!cached || !cached.baseMap || !Object.keys(cached.baseMap).length) return;
+        const map = applyTableOptions(key, cached.baseMap);
+        const items = sortedPayItems(map);
+        if (!items.length) return;
+        const title = cached.title || fallbackTitle;
+        let total = 0;
+        const body = items.map(item => {
+          const qty = Number(item.units);
+          const rate = getRateForSelected(item.code);
+          const ext = (rate == null) ? null : qty * Number(rate);
+          if (ext != null) total += ext;
+          const qtyStr = Number.isInteger(qty) ? String(qty) : qty.toFixed(2);
+          return [item.code, item.desc || "", qtyStr, item.unitType || "", money(rate), money(ext)];
+        });
+        body.push(["", "TOTAL", "", "", "", cid ? money(total) : "—"]);
+
+        if (y > 680) { doc.addPage(); y = 46; }
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(15, 23, 42);
+        doc.text(title, margin, y);
+        y += 6;
+        doc.autoTable({
+          startY: y,
+          head: [["Item", "Description", "Qty", "Unit", "Rate", "Ext"]],
+          body,
+          theme: "grid",
+          styles: { font: "helvetica", fontSize: 8, cellPadding: 4, textColor: [15, 23, 42], lineColor: [203, 213, 225], lineWidth: 0.4, overflow: "linebreak" },
+          headStyles: { fillColor: [241, 245, 249], textColor: [71, 85, 105], fontStyle: "bold", fontSize: 7.5 },
+          columnStyles: {
+            0: { cellWidth: 48, fontStyle: "bold", textColor: [29, 78, 216] },
+            2: { cellWidth: 36, halign: "right" },
+            3: { cellWidth: 42, halign: "right" },
+            4: { cellWidth: 62, halign: "right" },
+            5: { cellWidth: 68, halign: "right", fontStyle: "bold" }
+          },
+          didParseCell: (data) => {
+            if (data.section === "body" && data.row.index === body.length - 1) {
+              data.cell.styles.fontStyle = "bold";
+              data.cell.styles.fillColor = [248, 250, 252];
+              data.cell.styles.textColor = [15, 23, 42];
+            }
+          },
+          margin: { left: margin, right: margin }
+        });
+        y = doc.lastAutoTable.finalY + 16;
+        if (key === "dpt" && cached.showWellRateNote) {
+          notes.push("During a standard 10-hour workday of combo rig drilling, around four shallow monitoring wells (15 ft depth) can typically be installed.");
+        }
+        if (key === "dpt" && cached.hasDptDw) {
+          notes.push("DPT deep wells are typically 1-inch in diameter and require prepacked well screen. Surface casing is 4-inch via quote; 22-1 is estimated from pay item 5-6.");
+        }
+      });
+
+      if (notes.length) {
+        if (y > 720) { doc.addPage(); y = 46; }
+        doc.setDrawColor(203, 213, 225);
+        doc.line(margin, y, pageW - margin, y);
+        y += 12;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(71, 85, 105);
+        notes.forEach(n => {
+          const lines = doc.splitTextToSize("* " + n, pageW - margin * 2);
+          doc.text(lines, margin, y);
+          y += lines.length * 11 + 4;
+        });
+      }
+
+      doc.save(filename);
     }
     document.addEventListener('DOMContentLoaded', () => {
       populateAtcDropdown();
