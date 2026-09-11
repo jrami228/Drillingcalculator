@@ -8,6 +8,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FDEP Well Billing Calculator (ITN 2024019)</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     body {
       background-color: #f3f4f6;
@@ -18,12 +19,22 @@
     ::-webkit-scrollbar-track { background: #f1f1f1; }
     ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
     input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    @media print {
+      body { background: #fff !important; padding: 0 !important; }
+      .no-print { display: none !important; }
+      .app-title { display: none !important; }
+      .max-w-7xl { box-shadow: none !important; max-width: none !important; }
+      #results { display: block !important; }
+      .pay-item-row { break-inside: avoid; }
+      [data-table-kind] { break-inside: avoid; page-break-inside: avoid; }
+    }
   </style>
 </head>
 <body class="p-2 md:p-4">
   <div class="max-w-7xl mx-auto bg-white rounded-lg shadow-md overflow-hidden border border-gray-200">
-    <div class="bg-slate-800 p-3 text-white flex justify-center items-center gap-2">
-      <h1 class="text-sm font-bold uppercase tracking-wider text-center">FDEP PRP Calculator</h1>
+    <div class="bg-slate-800 p-3 text-white flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-2 min-w-0">
+      <h1 class="app-title text-sm font-bold uppercase tracking-wider text-center">FDEP PRP Calculator</h1>
       <!-- Info Icon with Tooltip -->
       <div class="relative group cursor-help flex items-center">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 hover:text-blue-300 transition-colors">
@@ -36,6 +47,13 @@
           This calculator assumes the installation of wells with a diameter of 2 inches and a surface casing of 6 inches (for deep wells). Exceptions are noted below the DPT Daily Rate Table.
           <div class="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45 border-t border-l border-gray-700"></div>
         </div>
+      </div>
+      <span id="autosaveStatus" class="hidden sm:inline text-[10px] text-slate-300 font-normal normal-case tracking-normal whitespace-nowrap"></span>
+      </div>
+      <div class="flex flex-wrap items-center gap-2 no-print">
+        <button type="button" onclick="clearSession()" class="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-1 px-3 rounded text-[10px] uppercase tracking-wider">Clear</button>
+        <button type="button" onclick="exportSessionHtml()" class="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold py-1 px-3 rounded text-[10px] uppercase tracking-wider">Export Session</button>
+        <button type="button" onclick="exportSessionPdf()" class="bg-rose-600 hover:bg-rose-500 text-white font-bold py-1 px-3 rounded text-[10px] uppercase tracking-wider">Export PDF</button>
       </div>
     </div>
     <div class="p-3">
@@ -121,7 +139,7 @@
           </select>
         </div>
       </div>
-      <div class="flex justify-center gap-4 mb-4">
+      <div class="flex flex-wrap justify-center gap-3 mb-4 no-print">
         <button onclick="addRow()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-1.5 px-8 rounded text-xs transition duration-200 shadow-sm uppercase tracking-wider">
           Add more rows
         </button>
@@ -184,10 +202,12 @@
       const n = parseFloat(el.value);
       TABLE_OPTIONS[kind + "HandAuger"] = (!isNaN(n) && n > 0) ? n : 0;
       rerenderCachedTable(kind);
+      scheduleAutosave();
     }
     function onDptWellSwapChange(el) {
       TABLE_OPTIONS.dptUse15 = !!el.checked;
       rerenderCachedTable("dpt");
+      scheduleAutosave();
     }
     function rerenderCachedTable(kind) {
       const cached = TABLE_CACHE[kind];
@@ -234,6 +254,7 @@
       sel.addEventListener("change", () => {
         SELECTED_CID = sel.value || "";
         hint.textContent = SELECTED_CID ? `Selected: ${SELECTED_CID} - ${ATC_DATA[SELECTED_CID]?.name || ""}` : "";
+        scheduleAutosave();
       });
     }
     function getRateForSelected(payItemCode) {
@@ -362,6 +383,9 @@
       TABLE_OPTIONS.sonicHandAuger = 0;
       TABLE_OPTIONS.dptUse15 = false;
       TABLE_CACHE.hsa = TABLE_CACHE.sonic = TABLE_CACHE.dpt = null;
+      if (!window._skipAutosaveClear) {
+        scheduleAutosave();
+      }
     }
     function getDepthCategory(depth) {
       if (depth < 50) return 'A';
@@ -619,7 +643,197 @@
       html += `</div>`;
       container.innerHTML += html;
     }
-    document.addEventListener('DOMContentLoaded', () => { populateAtcDropdown(); document.querySelectorAll('.well-row').forEach(row => { toggleSC(row.querySelector('.qty')); updateSpoonLabel(row.querySelector('.td')); }); });
+
+    const AUTOSAVE_KEY = "fdep_prp_calc_autosave_v1";
+    let _autosaveTimer = null;
+    let _autosaveReady = false;
+    function sessionStamp() {
+      const d = new Date();
+      const p = n => String(n).padStart(2, "0");
+      return d.getFullYear() + p(d.getMonth()+1) + p(d.getDate()) + "_" + p(d.getHours()) + p(d.getMinutes());
+    }
+    function collectSession() {
+      const rows = [];
+      document.querySelectorAll(".well-row").forEach(row => {
+        rows.push({
+          qty: row.querySelector(".qty").value,
+          rig: row.querySelector(".rig").value,
+          type: row.querySelector(".type").value,
+          td: row.querySelector(".td").value,
+          sc: row.querySelector(".sc").value,
+          scType: row.querySelector(".sc").type,
+          ss: row.querySelector(".ss").value
+        });
+      });
+      return {
+        cid: SELECTED_CID,
+        savedAt: new Date().toISOString(),
+        rows,
+        options: {
+          hsaHandAuger: TABLE_OPTIONS.hsaHandAuger,
+          sonicHandAuger: TABLE_OPTIONS.sonicHandAuger,
+          dptUse15: TABLE_OPTIONS.dptUse15
+        }
+      };
+    }
+    function applySession(s) {
+      if (!s) return false;
+      if (s.options) {
+        TABLE_OPTIONS.hsaHandAuger = s.options.hsaHandAuger || 0;
+        TABLE_OPTIONS.sonicHandAuger = s.options.sonicHandAuger || 0;
+        TABLE_OPTIONS.dptUse15 = !!s.options.dptUse15;
+      }
+      if (s.cid && ATC_DATA[s.cid]) {
+        SELECTED_CID = String(s.cid);
+        const sel = document.getElementById("atcSelect");
+        if (sel) sel.value = SELECTED_CID;
+        const hint = document.getElementById("atcHint");
+        if (hint) hint.textContent = "Selected: " + SELECTED_CID + " - " + ATC_DATA[SELECTED_CID].name;
+      }
+      const need = (s.rows || []).length;
+      while (document.querySelectorAll(".well-row").length < need) addRow();
+      document.querySelectorAll(".well-row").forEach((row, i) => {
+        const r = (s.rows || [])[i];
+        if (!r) return;
+        row.querySelector(".qty").value = r.qty != null ? r.qty : "0";
+        if (r.rig) row.querySelector(".rig").value = r.rig;
+        if (r.type) row.querySelector(".type").value = r.type;
+        row.querySelector(".td").value = r.td != null ? r.td : "";
+        const sc = row.querySelector(".sc");
+        if (r.scType) sc.type = r.scType;
+        sc.value = r.sc != null ? r.sc : "";
+        if (r.ss) row.querySelector(".ss").value = r.ss;
+      });
+      return true;
+    }
+    function restoreSessionIfPresent() {
+      return applySession(window.SAVED_SESSION);
+    }
+    function sessionHasWork(s) {
+      if (!s) return false;
+      if (s.options && (s.options.hsaHandAuger || s.options.sonicHandAuger || s.options.dptUse15)) return true;
+      return (s.rows || []).some(r => (parseInt(r.qty, 10) || 0) > 0 || (r.td && String(r.td).trim() !== ""));
+    }
+    function setAutosaveStatus(msg) {
+      const el = document.getElementById("autosaveStatus");
+      if (el) el.textContent = msg || "";
+    }
+    function persistAutosave() {
+      if (!_autosaveReady) return;
+      try {
+        const session = collectSession();
+        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(session));
+        const t = new Date();
+        setAutosaveStatus("Saved " + t.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }));
+      } catch (err) {
+        setAutosaveStatus("Autosave unavailable");
+      }
+    }
+    function scheduleAutosave() {
+      if (!_autosaveReady) return;
+      clearTimeout(_autosaveTimer);
+      _autosaveTimer = setTimeout(persistAutosave, 250);
+    }
+    function loadAutosave() {
+      try {
+        const raw = localStorage.getItem(AUTOSAVE_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+      } catch (err) {
+        return null;
+      }
+    }
+    function clearAutosave() {
+      try { localStorage.removeItem(AUTOSAVE_KEY); } catch (err) {}
+      setAutosaveStatus("");
+    }
+    function clearSession() {
+      window._skipAutosaveClear = true;
+      resetForm();
+      window._skipAutosaveClear = false;
+      clearAutosave();
+      setAutosaveStatus("Cleared");
+    }
+    function bindAutosave() {
+      const root = document.querySelector(".max-w-7xl") || document.body;
+      root.addEventListener("input", scheduleAutosave);
+      root.addEventListener("change", scheduleAutosave);
+      window.addEventListener("beforeunload", persistAutosave);
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") persistAutosave();
+      });
+    }
+    function exportSessionHtml() {
+      persistAutosave();
+      const session = collectSession();
+      const payload = JSON.stringify(session);
+      let src = document.documentElement.outerHTML;
+      src = src.replace(/<script>\s*window\.SAVED_SESSION\s*=\s*\{[\s\S]*?\};\s*<\/script>\s*/i, "");
+      const inject = "<script>window.SAVED_SESSION = " + payload + ";<\/script>\n</body>";
+      if (/<\/body>/i.test(src)) src = src.replace(/<\/body>/i, inject);
+      else src += inject;
+      if (!src.trim().toLowerCase().startsWith("<!doctype")) src = "<!DOCTYPE html>\n" + src;
+      const blob = new Blob([src], { type: "text/html;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "Pay_Item_Session_" + sessionStamp() + ".html";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+    }
+    async function exportSessionPdf() {
+      persistAutosave();
+      const filename = "Pay_Item_Session_" + sessionStamp() + ".pdf";
+      const area = document.querySelector(".max-w-7xl") || document.body;
+      const results = document.getElementById("results");
+      const title = document.querySelector(".app-title");
+      const wasHidden = results && results.classList.contains("hidden");
+      if (results) results.classList.remove("hidden");
+      if (title) title.style.display = "none";
+      try {
+        if (window.html2pdf) {
+          await window.html2pdf().set({
+            margin: [0.35, 0.35, 0.35, 0.35],
+            filename,
+            image: { type: "jpeg", quality: 0.96 },
+            html2canvas: { scale: 2, useCORS: true, logging: false, windowWidth: 1400 },
+            jsPDF: { unit: "in", format: "letter", orientation: "landscape" },
+            pagebreak: { mode: ["css", "legacy"], avoid: ["[data-table-kind]", "table"] }
+          }).from(area).save();
+        } else {
+          window.print();
+        }
+      } finally {
+        if (title) title.style.display = "";
+        if (results && wasHidden) results.classList.add("hidden");
+      }
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      populateAtcDropdown();
+      let restored = restoreSessionIfPresent();
+      let source = restored ? window.SAVED_SESSION : null;
+      if (!restored) {
+        source = loadAutosave();
+        if (source) applySession(source);
+      }
+      document.querySelectorAll('.well-row').forEach(row => {
+        toggleSC(row.querySelector('.qty'));
+        updateSpoonLabel(row.querySelector('.td'));
+      });
+      if (sessionHasWork(source)) calculate();
+      if (source && source.savedAt && !window.SAVED_SESSION) {
+        try {
+          const t = new Date(source.savedAt);
+          setAutosaveStatus("Restored " + t.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }));
+        } catch (err) {
+          setAutosaveStatus("Restored");
+        }
+      }
+      bindAutosave();
+      _autosaveReady = true;
+      persistAutosave();
+    });
+
   </script>
 </body>
 </html>
